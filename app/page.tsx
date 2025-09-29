@@ -20,7 +20,7 @@ export default function HomePage() {
           </p>
           <div className="flex gap-4 justify-center">
             <Button asChild size="lg" className="px-8">
-              <Link href="/login">Get Started</Link>
+              <Link href="/auth/login">Get Started</Link>
             </Button>
           </div>
         </div>
