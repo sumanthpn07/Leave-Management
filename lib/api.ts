@@ -37,3 +37,33 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// API endpoints
+export const leaveApi = {
+  // Get user's own leave requests
+  getMyLeaves: () => api.get('/leaves/my'),
+  
+  // Apply for new leave
+  applyLeave: (data: any) => api.post('/leaves', data),
+  
+  // Get pending approvals (for managers)
+  getPendingApprovals: () => api.get('/leaves/pending'),
+  
+  // Approve/reject leave request
+  approveLeave: (id: string, data: any) => api.patch(`/leaves/${id}/approve`, data),
+  
+  // Get leave details by ID
+  getLeaveDetails: (id: string) => api.get(`/leaves/${id}`),
+  
+  // Get leave history
+  getLeaveHistory: (params?: any) => api.get('/leaves/history', { params }),
+  
+  // Get leave types
+  getLeaveTypes: () => api.get('/leave-types'),
+  
+  // Get leave balances
+  getLeaveBalances: () => api.get('/leaves/balances'),
+  
+  // Cancel leave request
+  cancelLeave: (id: string) => api.delete(`/leaves/${id}`),
+};
