@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -38,28 +38,33 @@ api.interceptors.response.use(
   }
 );
 
-// API endpoints
+// Auth API
+export const authApi = {
+  login: (credentials: { email: string; password: string }) => 
+    api.post('/auth/login', credentials),
+  getProfile: () => api.get('/auth/profile'),
+};
+
+// Leave API
 export const leaveApi = {
   // Get user's own leave requests
-  getMyLeaves: () => api.get('/leaves/my'),
+  getMyLeaves: () => api.get('/leaves'),
   
   // Apply for new leave
   applyLeave: (data: any) => api.post('/leaves', data),
   
   // Get pending approvals (for managers)
-  getPendingApprovals: () => api.get('/leaves/pending'),
+  getPendingApprovals: () => api.get('/approvals/pending'),
   
   // Approve/reject leave request
-  approveLeave: (id: string, data: any) => api.patch(`/leaves/${id}/approve`, data),
+  approveLeave: (id: string, data: any) => api.post(`/leaves/${id}/approve`, data),
+  rejectLeave: (id: string, data: any) => api.post(`/leaves/${id}/reject`, data),
   
   // Get leave details by ID
   getLeaveDetails: (id: string) => api.get(`/leaves/${id}`),
   
   // Get leave history
-  getLeaveHistory: (params?: any) => api.get('/leaves/history', { params }),
-  
-  // Get leave types
-  getLeaveTypes: () => api.get('/leave-types'),
+  getLeaveHistory: (params?: any) => api.get('/leaves', { params }),
   
   // Get leave balances
   getLeaveBalances: () => api.get('/leaves/balances'),
@@ -67,15 +72,13 @@ export const leaveApi = {
   // Cancel leave request
   cancelLeave: (id: string) => api.delete(`/leaves/${id}`),
   
-  // Get admin leave summary
-  getAdminLeaveSummary: (year?: string) => api.get('/admin/leave-summary', { params: { year } }),
+  // Update leave request
+  updateLeave: (id: string, data: any) => api.put(`/leaves/${id}`, data),
   
-  // Get team leave requests (for managers)
-  getTeamLeaves: (params?: any) => api.get('/leaves/team', { params }),
+  // Get approval history
+  getApprovalHistory: (id: string) => api.get(`/leaves/${id}/approval-history`),
   
-  // Get all users (for admin)
-  getAllUsers: () => api.get('/users'),
-  
-  // Get department statistics
-  getDepartmentStats: (year?: string) => api.get('/admin/department-stats', { params: { year } }),
+  // Admin APIs
+  getAdminLeaveSummary: () => api.get('/admin/leave-summary'),
+  getAdminPendingApprovals: () => api.get('/admin/pending-approvals'),
 };

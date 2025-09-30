@@ -105,12 +105,13 @@ export default function LoginPage() {
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
-              Demo Accounts:
+              Demo Accounts (Backend Connected):
             </p>
             <div className="mt-2 text-xs text-gray-500 space-y-1">
-              <p><strong>Employee:</strong> demo@company.com / demo123</p>
-              <p><strong>Manager:</strong> manager@company.com / manager123</p>
-              <p><strong>Admin:</strong> admin@company.com / admin123</p>
+              <p><strong>Employee:</strong> john.doe@company.com / password123</p>
+              <p><strong>Manager:</strong> jane.smith@company.com / password123</p>
+              <p><strong>HR Manager:</strong> mike.wilson@company.com / password123</p>
+              <p><strong>Admin:</strong> admin@company.com / password123</p>
             </div>
           </div>
 
