@@ -10,226 +10,52 @@ export const useMyLeaves = (status?: string) => {
   return useQuery({
     queryKey: ['myLeaves', status],
     queryFn: async (): Promise<LeaveRequest[]> => {
-      // Mock data for demo - replace with actual API call
-      const mockLeaves: LeaveRequest[] = [
+      const mockLeaves = [
         {
           id: '1',
           userId: '1',
           leaveTypeId: '1',
-          startDate: '2025-02-15',
-          endDate: '2025-02-19',
+          startDate: '2026-02-15',
+          endDate: '2026-02-19',
           totalDays: 5,
           reason: 'Family vacation to celebrate anniversary',
-          status: 'APPROVED',
+          status: 'PENDING_RM',
           appliedAt: '2024-12-20T10:00:00Z',
-          approvedAt: '2024-12-21T14:30:00Z',
           leaveType: { id: '1', name: 'Annual Leave', maxDays: 25, carryForward: true, requiresApproval: true },
+          reportingManagerId: '2',
+          hrManagerId: '3',
+          user: { id: '1', email: 'demo@company.com', firstName: 'John', lastName: 'Doe', role: 'EMPLOYEE', department: 'Engineering' },
         },
         {
           id: '2',
           userId: '1',
           leaveTypeId: '2',
-          startDate: '2024-12-18',
-          endDate: '2024-12-18',
-          totalDays: 1,
-          reason: 'Flu symptoms and fever',
-          status: 'APPROVED',
-          appliedAt: '2024-12-17T09:00:00Z',
-          approvedAt: '2024-12-17T11:30:00Z',
+          startDate: '2026-01-30',
+          endDate: '2026-01-31',
+          totalDays: 2,
+          reason: 'Doctor appointment and medical tests scheduled',
+          status: 'PENDING_HR',
+          appliedAt: '2024-12-26T10:15:00Z',
           leaveType: { id: '2', name: 'Sick Leave', maxDays: 10, carryForward: false, requiresApproval: true },
+          reportingManagerId: '2',
+          hrManagerId: '3',
+          rmApprovedAt: '2024-12-26T16:45:00Z',
+          rmApprovedBy: '2',
+          user: { id: '1', email: 'demo@company.com', firstName: 'John', lastName: 'Doe', role: 'EMPLOYEE', department: 'Engineering' },
         },
         {
           id: '3',
           userId: '1',
           leaveTypeId: '1',
-          startDate: '2025-03-15',
-          endDate: '2025-03-17',
-          totalDays: 3,
-          reason: 'Spring break with family',
-          status: 'APPROVED',
-          appliedAt: '2024-12-22T15:00:00Z',
-          approvedAt: '2024-12-23T09:15:00Z',
-          leaveType: { id: '1', name: 'Annual Leave', maxDays: 25, carryForward: true, requiresApproval: true },
-        },
-        {
-          id: '4',
-          userId: '1',
-          leaveTypeId: '3',
-          startDate: '2025-01-28',
-          endDate: '2025-01-28',
-          totalDays: 1,
-          reason: 'Personal appointment that cannot be rescheduled',
-          status: 'PENDING',
-          appliedAt: '2024-12-23T10:00:00Z',
-          leaveType: { id: '3', name: 'Personal Leave', maxDays: 5, carryForward: false, requiresApproval: true },
-        },
-        {
-          id: '5',
-          userId: '1',
-          leaveTypeId: '1',
           startDate: '2024-11-28',
           endDate: '2024-11-29',
           totalDays: 2,
           reason: 'Thanksgiving holiday with extended family',
           status: 'APPROVED',
-          appliedAt: '2024-11-20T15:00:00Z',
-          approvedAt: '2024-11-21T09:15:00Z',
+          appliedAt: '2026-11-20T15:00:00Z',
+          approvedAt: '2026-11-21T09:15:00Z',
           leaveType: { id: '1', name: 'Annual Leave', maxDays: 25, carryForward: true, requiresApproval: true },
-        },
-        {
-          id: '6',
-          userId: '1',
-          leaveTypeId: '2',
-          startDate: '2024-10-15',
-          endDate: '2024-10-16',
-          totalDays: 2,
-          reason: 'Medical procedure and recovery',
-          status: 'APPROVED',
-          appliedAt: '2024-10-10T08:30:00Z',
-          approvedAt: '2024-10-10T16:45:00Z',
-          leaveType: { id: '2', name: 'Sick Leave', maxDays: 10, carryForward: false, requiresApproval: true },
-        },
-        {
-          id: '7',
-          userId: '1',
-          leaveTypeId: '1',
-          startDate: '2024-09-20',
-          endDate: '2024-09-22',
-          totalDays: 3,
-          reason: 'Weekend getaway extension',
-          status: 'REJECTED',
-          appliedAt: '2024-09-15T12:00:00Z',
-          approvedAt: '2024-09-16T10:30:00Z',
-          rejectionReason: 'Insufficient leave balance for this period',
-          leaveType: { id: '1', name: 'Annual Leave', maxDays: 25, carryForward: true, requiresApproval: true },
-        },
-        {
-          id: '8',
-          userId: '1',
-          leaveTypeId: '1',
-          startDate: '2025-04-10',
-          endDate: '2025-04-14',
-          totalDays: 5,
-          reason: 'Planned vacation to visit relatives overseas',
-          status: 'PENDING',
-          appliedAt: '2024-12-24T14:00:00Z',
-          leaveType: { id: '1', name: 'Annual Leave', maxDays: 25, carryForward: true, requiresApproval: true },
-        },
-        {
-          id: '9',
-          userId: '1',
-          leaveTypeId: '3',
-          startDate: '2025-01-15',
-          endDate: '2025-01-15',
-          totalDays: 1,
-          reason: 'Moving to new apartment',
-          status: 'PENDING',
-          appliedAt: '2024-12-25T09:00:00Z',
-          leaveType: { id: '3', name: 'Personal Leave', maxDays: 5, carryForward: false, requiresApproval: true },
-        },
-        {
-          id: '10',
-          userId: '1',
-          leaveTypeId: '2',
-          startDate: '2024-08-12',
-          endDate: '2024-08-14',
-          totalDays: 3,
-          reason: 'Food poisoning recovery',
-          status: 'APPROVED',
-          appliedAt: '2024-08-11T07:30:00Z',
-          approvedAt: '2024-08-11T13:45:00Z',
-          attachmentUrl: '/uploads/medical_certificate_aug.pdf',
-          leaveType: { id: '2', name: 'Sick Leave', maxDays: 10, carryForward: false, requiresApproval: true },
-        },
-        {
-          id: '11',
-          userId: '1',
-          leaveTypeId: '4',
-          startDate: '2024-07-01',
-          endDate: '2024-08-30',
-          totalDays: 45,
-          reason: 'Paternity leave for newborn child',
-          status: 'APPROVED',
-          appliedAt: '2024-06-15T10:00:00Z',
-          approvedAt: '2024-06-16T14:30:00Z',
-          attachmentUrl: '/uploads/birth_certificate.pdf',
-          leaveType: { id: '4', name: 'Maternity/Paternity Leave', maxDays: 90, carryForward: false, requiresApproval: true },
-        },
-        {
-          id: '12',
-          userId: '1',
-          leaveTypeId: '1',
-          startDate: '2024-05-20',
-          endDate: '2024-05-24',
-          totalDays: 5,
-          reason: 'Summer vacation with friends',
-          status: 'CANCELLED',
-          appliedAt: '2024-05-10T12:00:00Z',
-          leaveType: { id: '1', name: 'Annual Leave', maxDays: 25, carryForward: true, requiresApproval: true },
-        },
-        {
-          id: '5',
-          userId: '1',
-          leaveTypeId: '1',
-          startDate: '2024-11-28',
-          endDate: '2024-11-29',
-          totalDays: 2,
-          reason: 'Thanksgiving holiday with extended family',
-          status: 'APPROVED',
-          appliedAt: '2024-11-20T15:00:00Z',
-          approvedAt: '2024-11-21T09:15:00Z',
-          leaveType: { id: '1', name: 'Annual Leave', maxDays: 25, carryForward: true, requiresApproval: true },
-        },
-        {
-          id: '6',
-          userId: '1',
-          leaveTypeId: '2',
-          startDate: '2024-10-15',
-          endDate: '2024-10-16',
-          totalDays: 2,
-          reason: 'Medical procedure and recovery',
-          status: 'APPROVED',
-          appliedAt: '2024-10-10T08:30:00Z',
-          approvedAt: '2024-10-10T16:45:00Z',
-          leaveType: { id: '2', name: 'Sick Leave', maxDays: 10, carryForward: false, requiresApproval: true },
-        },
-        {
-          id: '7',
-          userId: '1',
-          leaveTypeId: '1',
-          startDate: '2024-09-20',
-          endDate: '2024-09-22',
-          totalDays: 3,
-          reason: 'Weekend getaway extension',
-          status: 'REJECTED',
-          appliedAt: '2024-09-15T12:00:00Z',
-          approvedAt: '2024-09-16T10:30:00Z',
-          rejectionReason: 'Insufficient leave balance for this period',
-          leaveType: { id: '1', name: 'Annual Leave', maxDays: 25, carryForward: true, requiresApproval: true },
-        },
-        {
-          id: '8',
-          userId: '1',
-          leaveTypeId: '1',
-          startDate: '2025-04-10',
-          endDate: '2025-04-14',
-          totalDays: 5,
-          reason: 'Planned vacation to visit relatives overseas',
-          status: 'PENDING',
-          appliedAt: '2024-12-24T14:00:00Z',
-          leaveType: { id: '1', name: 'Annual Leave', maxDays: 25, carryForward: true, requiresApproval: true },
-        },
-        {
-          id: '9',
-          userId: '1',
-          leaveTypeId: '3',
-          startDate: '2025-01-15',
-          endDate: '2025-01-15',
-          totalDays: 1,
-          reason: 'Moving to new apartment',
-          status: 'PENDING',
-          appliedAt: '2024-12-25T09:00:00Z',
-          leaveType: { id: '3', name: 'Personal Leave', maxDays: 5, carryForward: false, requiresApproval: true },
+          user: { id: '1', email: 'demo@company.com', firstName: 'John', lastName: 'Doe', role: 'EMPLOYEE', department: 'Engineering' },
         },
       ];
       
@@ -495,8 +321,8 @@ export const useLeaveDetails = (id: string) => {
           id: '1',
           userId: '1',
           leaveTypeId: '1',
-          startDate: '2025-02-15',
-          endDate: '2025-02-19',
+          startDate: '2026-02-15',
+          endDate: '2026-02-19',
           totalDays: 5,
           reason: 'Family vacation to celebrate our wedding anniversary. We have planned this trip for months and have already made non-refundable bookings.',
           status: 'PENDING_RM',
@@ -510,8 +336,8 @@ export const useLeaveDetails = (id: string) => {
           id: '2',
           userId: '1',
           leaveTypeId: '2',
-          startDate: '2024-12-18',
-          endDate: '2024-12-18',
+          startDate: '2026-12-18',
+          endDate: '2026-12-18',
           totalDays: 1,
           reason: 'Flu symptoms and fever - doctor recommended rest',
           status: 'PENDING_HR',
@@ -581,6 +407,38 @@ export const useLeaveDetails = (id: string) => {
           reportingManagerId: '2',
           hrManagerId: '3',
         },
+        '13': {
+          id: '13',
+          userId: '1',
+          leaveTypeId: '1',
+          startDate: '2025-02-10',
+          endDate: '2025-02-14',
+          totalDays: 5,
+          reason: 'Winter vacation with family - planning to visit the mountains for skiing',
+          status: 'PENDING_RM',
+          appliedAt: '2024-12-27T14:30:00Z',
+          user: { id: '1', email: 'demo@company.com', firstName: 'John', lastName: 'Doe', role: 'EMPLOYEE', department: 'Engineering' },
+          leaveType: { id: '1', name: 'Annual Leave', maxDays: 25, carryForward: true, requiresApproval: true },
+          reportingManagerId: '2',
+          hrManagerId: '3',
+        },
+        '14': {
+          id: '14',
+          userId: '1',
+          leaveTypeId: '2',
+          startDate: '2025-01-30',
+          endDate: '2025-01-31',
+          totalDays: 2,
+          reason: 'Doctor appointment and medical tests scheduled',
+          status: 'PENDING_HR',
+          appliedAt: '2024-12-26T10:15:00Z',
+          user: { id: '1', email: 'demo@company.com', firstName: 'John', lastName: 'Doe', role: 'EMPLOYEE', department: 'Engineering' },
+          leaveType: { id: '2', name: 'Sick Leave', maxDays: 10, carryForward: false, requiresApproval: true },
+          reportingManagerId: '2',
+          hrManagerId: '3',
+          rmApprovedAt: '2024-12-26T16:45:00Z',
+          rmApprovedBy: '2',
+        },
       };
       
       const leave = mockLeaveDetails[id];
@@ -610,7 +468,7 @@ export const useLeaveHistory = (filters?: { year?: number; status?: string; user
           endDate: '2024-11-29',
           totalDays: 2,
           reason: 'Thanksgiving holiday with extended family',
-          status: 'APPROVED',
+          status: 'PENDING',
           appliedAt: '2024-11-20T15:00:00Z',
           rmApprovedAt: '2024-11-21T09:15:00Z',
           rmApprovedBy: '2',
@@ -663,7 +521,7 @@ export const useLeaveHistory = (filters?: { year?: number; status?: string; user
           endDate: '2024-08-14',
           totalDays: 3,
           reason: 'Food poisoning recovery',
-          status: 'APPROVED',
+          status: 'PENDING',
           appliedAt: '2024-08-11T07:30:00Z',
           rmApprovedAt: '2024-08-11T13:45:00Z',
           rmApprovedBy: '2',
@@ -682,7 +540,7 @@ export const useLeaveHistory = (filters?: { year?: number; status?: string; user
           endDate: '2024-08-30',
           totalDays: 45,
           reason: 'Paternity leave for newborn child',
-          status: 'APPROVED',
+          status: 'PENDING',
           appliedAt: '2024-06-15T10:00:00Z',
           rmApprovedAt: '2024-06-16T14:30:00Z',
           rmApprovedBy: '2',
@@ -837,10 +695,10 @@ export const useCancelLeave = () => {
       queryClient.invalidateQueries({ queryKey: ['pendingApprovals'] });
       queryClient.invalidateQueries({ queryKey: ['leaveBalances'] });
       queryClient.invalidateQueries({ queryKey: ['leaveHistory'] });
-      toast.success('Leave request cancelled successfully');
+      toast.success('Leave request deleted successfully');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to cancel leave request');
+      toast.error(error.response?.data?.message || 'Failed to delete leave request');
     },
   });
 };
@@ -852,6 +710,63 @@ export const useLeaveRequests = (status?: string, userId?: string) => {
 
 export const useCreateLeaveRequest = () => {
   return useApplyLeave();
+};
+
+// Update leave request
+export const useUpdateLeave = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: CreateLeaveRequest | FormData }): Promise<LeaveRequest> => {
+      // Mock implementation - replace with actual API call
+      let leaveData: any;
+      
+      if (data instanceof FormData) {
+        // Handle FormData for file uploads
+        leaveData = {
+          leaveTypeId: data.get('leaveTypeId'),
+          startDate: data.get('startDate'),
+          endDate: data.get('endDate'),
+          reason: data.get('reason'),
+          totalDays: parseInt(data.get('totalDays') as string),
+          file: data.get('file'),
+        };
+      } else {
+        leaveData = data;
+      }
+      
+      const updatedLeave: LeaveRequest = {
+        id,
+        userId: '1',
+        leaveTypeId: leaveData.leaveTypeId,
+        startDate: leaveData.startDate,
+        endDate: leaveData.endDate,
+        totalDays: leaveData.totalDays,
+        reason: leaveData.reason,
+        status: 'PENDING_RM', // Reset to pending RM when edited
+        appliedAt: new Date().toISOString(), // Update applied time
+        attachmentUrl: leaveData.file ? `/uploads/${leaveData.file.name}` : undefined,
+        reportingManagerId: '2',
+        hrManagerId: '3',
+      };
+      
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return updatedLeave;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['myLeaves'] });
+      queryClient.invalidateQueries({ queryKey: ['leaveDetails'] });
+      queryClient.invalidateQueries({ queryKey: ['pendingApprovals'] });
+      queryClient.invalidateQueries({ queryKey: ['leaveBalances'] });
+      queryClient.invalidateQueries({ queryKey: ['leaveHistory'] });
+      toast.success('Leave request updated successfully');
+    },
+    onError: (error: any) => {
+      // Don't show toast error here as we handle it in the component
+      console.error('Leave update error:', error);
+    },
+  });
 };
 
 export const useUpdateLeaveRequest = () => {

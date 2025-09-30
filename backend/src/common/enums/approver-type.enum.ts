@@ -1,0 +1,4 @@
+export enum ApproverType {
+  REPORTING_MANAGER = 'REPORTING_MANAGER',
+  HR_MANAGER = 'HR_MANAGER',
+}

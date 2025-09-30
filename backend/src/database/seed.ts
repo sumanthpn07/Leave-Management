@@ -1,6 +1,8 @@
 import { DataSource } from 'typeorm';
 import { config } from 'dotenv';
 import { seedEmployees } from './seeds/employee.seed';
+import { seedLeaveBalances } from './seeds/leave-balance.seed';
+import { seedSampleLeaves } from './seeds/leave-request.seed';
 
 // Load environment variables
 config();
@@ -22,6 +24,8 @@ async function runSeeds() {
     console.log('Database connected successfully');
 
     await seedEmployees(dataSource);
+    await seedLeaveBalances(dataSource);
+    await seedSampleLeaves(dataSource);
     
     console.log('Seeding completed successfully');
   } catch (error) {

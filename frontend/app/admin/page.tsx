@@ -1,6 +1,6 @@
 'use client';
 
-import { ProtectedRoute } from '@/frontend/components/auth/protected-route';
+import { ProtectedRoute } from '@/components/auth/protected-route';
 
 export default function AdminPage() {
   return (

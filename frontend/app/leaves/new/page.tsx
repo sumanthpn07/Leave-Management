@@ -4,20 +4,20 @@ import { useState, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Button } from '@/frontend/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/frontend/components/ui/card';
-import { Input } from '@/frontend/components/ui/input';
-import { Label } from '@/frontend/components/ui/label';
-import { Textarea } from '@/frontend/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/frontend/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useApplyLeave, useLeaveTypes } from '@/hooks/use-leaves';
-import { ProtectedRoute } from '@/frontend/components/auth/protected-route';
+import { ProtectedRoute } from '@/components/auth/protected-route';
 import { Calendar, Upload, TriangleAlert as AlertTriangle, ArrowLeft, X, FileText } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { format, differenceInBusinessDays, isWeekend, addDays } from 'date-fns';
-import { Progress } from '@/frontend/components/ui/progress';
-import { Alert, AlertDescription } from '@/frontend/components/ui/alert';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const leaveApplicationSchema = z.object({
   leaveTypeId: z.string().min(1, 'Please select a leave type'),

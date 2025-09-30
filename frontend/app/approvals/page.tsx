@@ -1,16 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { ProtectedRoute } from '@/frontend/components/auth/protected-route';
+import { ProtectedRoute } from '@/components/auth/protected-route';
 import { usePendingApprovals, useApproveLeave } from '@/hooks/use-leaves';
-import { Button } from '@/frontend/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/frontend/components/ui/card';
-import { Badge } from '@/frontend/components/ui/badge';
-import { Separator } from '@/frontend/components/ui/separator';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { CircleCheck as CheckCircle, Circle as XCircle, Clock, User, Calendar, FileText, Paperclip } from 'lucide-react';
 import { format } from 'date-fns';
 import { LeaveRequest } from '@/types/leave';
-import { ApprovalModal } from '@/frontend/components/approvals/approval-modal';
+import { ApprovalModal } from '@/components/approvals/approval-modal';
 
 export default function ApprovalsPage() {
   const [selectedLeave, setSelectedLeave] = useState<LeaveRequest | null>(null);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuthContext } from '@/frontend/contexts/auth-context';
+import { useAuthContext } from '@/contexts/auth-context';
 
 export const useAuth = () => {
   const context = useAuthContext();

@@ -3,6 +3,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { Employee } from './employees/entities/employee.entity';
+import { LeaveRequest } from './leaves/entities/leave-request.entity';
+import { LeaveBalance } from './leaves/entities/leave-balance.entity';
+import { LeaveWorkflow } from './workflows/entities/leave-workflow.entity';
+import { LeaveApproval } from './approvals/entities/leave-approval.entity';
+import { LeavesModule } from './leaves/leaves.module';
+import { ApprovalsModule } from './approvals/approvals.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -18,13 +25,16 @@ import { Employee } from './employees/entities/employee.entity';
         username: configService.get('DATABASE_USERNAME'),
         password: configService.get('DATABASE_PASSWORD'),
         database: configService.get('DATABASE_NAME'),
-        entities: [Employee],
+        entities: [Employee, LeaveRequest, LeaveBalance, LeaveWorkflow, LeaveApproval],
         synchronize: configService.get('NODE_ENV') === 'development',
         logging: configService.get('NODE_ENV') === 'development',
       }),
       inject: [ConfigService],
     }),
     AuthModule,
+    LeavesModule,
+    ApprovalsModule,
+    AdminModule,
   ],
 })
 export class AppModule {}

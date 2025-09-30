@@ -1,14 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { ProtectedRoute } from '@/frontend/components/auth/protected-route';
+import { ProtectedRoute } from '@/components/auth/protected-route';
 import { useMyLeaves, useCancelLeave } from '@/hooks/use-leaves';
-import { Button } from '@/frontend/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/frontend/components/ui/card';
-import { Badge } from '@/frontend/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/frontend/components/ui/select';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/frontend/components/ui/alert-dialog';
-import { Plus, Eye, X, Calendar, Filter, Clock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Plus, Eye, X, Calendar, Filter, Clock, CreditCard as Edit } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { LeaveRequest } from '@/types/leave';
@@ -53,7 +53,7 @@ export default function LeavesPage() {
   };
 
   const canCancelLeave = (leave: LeaveRequest) => {
-    return ['PENDING_RM', 'PENDING_HR'].includes(leave.status) && new Date(leave.startDate) > new Date();
+    return ['PENDING_RM', 'PENDING_HR'].includes(leave.status) && new Date(leave.startDate) >= new Date();
   };
 
   const handleCancelLeave = async (leaveId: string) => {
@@ -212,18 +212,26 @@ export default function LeavesPage() {
                             </Link>
                           </Button>
                           {canCancelLeave(leave) && (
+                            <Button variant="outline" size="sm" asChild>
+                              <Link href={`/leaves/${leave.id}/edit`}>
+                                <Edit className="h-4 w-4 mr-1" />
+                                Edit
+                              </Link>
+                            </Button>
+                          )}
+                          {canCancelLeave(leave) && (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
                                   <X className="h-4 w-4 mr-1" />
-                                  Cancel
+                                  Delete
                                 </Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle>Cancel Leave Request</AlertDialogTitle>
+                                  <AlertDialogTitle>Delete Leave Request</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    Are you sure you want to cancel this leave request? This action cannot be undone.
+                                    Are you sure you want to delete this leave request? This action cannot be undone.
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
@@ -233,7 +241,7 @@ export default function LeavesPage() {
                                     className="bg-red-600 hover:bg-red-700"
                                     disabled={cancelLeaveMutation.isPending}
                                   >
-                                    {cancelLeaveMutation.isPending ? 'Cancelling...' : 'Cancel Request'}
+                                    {cancelLeaveMutation.isPending ? 'Deleting...' : 'Delete Request'}
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>

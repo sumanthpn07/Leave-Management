@@ -1,7 +1,7 @@
 'use client';
 
-import { Button } from '@/frontend/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/frontend/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { CalendarDays, Clock, Users, CircleCheck as CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 

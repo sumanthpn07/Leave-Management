@@ -1,10 +1,10 @@
 'use client';
 
-import { ProtectedRoute } from '@/frontend/components/auth/protected-route';
+import { ProtectedRoute } from '@/components/auth/protected-route';
 import { useAuth } from '@/hooks/use-auth';
 import { useLeaveBalances, useMyLeaves } from '@/hooks/use-leaves';
-import { Button } from '@/frontend/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/frontend/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { LogOut, User, Calendar, Clock, Plus, Umbrella, Heart, Plane, FileText } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -268,13 +268,14 @@ export default function DashboardPage() {
                         switch (status) {
                           case 'APPROVED': return 'bg-green-100 text-green-800';
                           case 'REJECTED': return 'bg-red-100 text-red-800';
-                          case 'PENDING': return 'bg-yellow-100 text-yellow-800';
+                          case 'PENDING_RM': return 'bg-yellow-100 text-yellow-800';
+                          case 'PENDING_HR': return 'bg-orange-100 text-orange-800';
                           default: return 'bg-gray-100 text-gray-800';
                         }
                       };
 
                       return (
-                        <div key={leave.id} className="flex items-center justify-between">
+                        <Link key={leave.id} href={`/leaves/${leave.id}`} className="flex items-center justify-between hover:bg-gray-50 p-2 rounded-lg transition-colors cursor-pointer">
                           <div>
                             <p className="text-sm font-medium">{leave.leaveType?.name}</p>
                             <p className="text-xs text-gray-500">
@@ -284,7 +285,7 @@ export default function DashboardPage() {
                           <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(leave.status)}`}>
                             {getStatusDisplayName(leave.status)}
                           </span>
-                        </div>
+                        </Link>
                       );
                     }) || (
                       <div className="text-center py-4">

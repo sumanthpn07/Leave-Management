@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
-import { ProtectedRoute } from '@/frontend/components/auth/protected-route';
-import { LeaveDetailsClient } from '@/frontend/components/leaves/leave-details-client';
+import { ProtectedRoute } from '@/components/auth/protected-route';
+import { LeaveDetailsClient } from '@/components/leaves/leave-details-client';
 
 export async function generateStaticParams() {
   // Return the IDs from the mock data in useLeaveDetails hook
@@ -8,15 +8,6 @@ export async function generateStaticParams() {
     { id: '1' },
     { id: '2' },
     { id: '3' },
-    { id: '4' },
-    { id: '5' },
-    { id: '6' },
-    { id: '7' },
-    { id: '8' },
-    { id: '9' },
-    { id: '10' },
-    { id: '11' },
-    { id: '12' }
   ];
 }
 

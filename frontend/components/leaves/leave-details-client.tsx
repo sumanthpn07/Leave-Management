@@ -4,12 +4,12 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLeaveDetails, useCancelLeave } from '@/hooks/use-leaves';
 import { useAuth } from '@/hooks/use-auth';
-import { Button } from '@/frontend/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/frontend/components/ui/card';
-import { Badge } from '@/frontend/components/ui/badge';
-import { Separator } from '@/frontend/components/ui/separator';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/frontend/components/ui/alert-dialog';
-import { ArrowLeft, Calendar, Clock, FileText, User, X, CircleCheck as CheckCircle, Circle as XCircle, CircleAlert as AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { ArrowLeft, Calendar, Clock, FileText, User, X, CircleCheck as CheckCircle, Circle as XCircle, CircleAlert as AlertCircle, CreditCard as Edit } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 
@@ -45,7 +45,7 @@ export function LeaveDetailsClient({ leaveId }: LeaveDetailsClientProps) {
   const canCancelLeave = leave && 
     leave.userId === user?.id && 
     ['PENDING_RM', 'PENDING_HR'].includes(leave.status) && 
-    new Date(leave.startDate) > new Date();
+    new Date(leave.startDate) >= new Date();
 
   const handleCancelLeave = async () => {
     if (!leave) return;
@@ -108,15 +108,19 @@ export function LeaveDetailsClient({ leaveId }: LeaveDetailsClientProps) {
 
   if (error || !leave) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="max-w-md">
-          <CardContent className="p-6 text-center">
-            <p className="text-red-600 mb-4">Failed to load leave details</p>
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">Leave Request Not Found</h1>
+            <p className="text-gray-600 mb-6">The leave request you're looking for doesn't exist or you don't have permission to view it.</p>
             <Button asChild>
-              <Link href="/leaves">Back to Leaves</Link>
+              <Link href="/leaves">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Leaves
+              </Link>
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
@@ -124,46 +128,59 @@ export function LeaveDetailsClient({ leaveId }: LeaveDetailsClientProps) {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6">
-          <Button variant="ghost" asChild className="mb-4">
-            <Link href="/leaves">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Leaves
-            </Link>
-          </Button>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Leave Request Details</h1>
-              <p className="text-gray-600">Request ID: {leave.id}</p>
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-4">
+              <Button variant="ghost" asChild>
+                <Link href="/leaves">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Leaves
+                </Link>
+              </Button>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Leave Request Details</h1>
+                <p className="text-gray-600">Request ID: {leave.id}</p>
+              </div>
             </div>
-            {canCancelLeave && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" className="text-red-600 hover:text-red-700">
-                    <X className="h-4 w-4 mr-2" />
-                    Cancel Request
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Cancel Leave Request</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Are you sure you want to cancel this leave request? This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Keep Request</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleCancelLeave}
-                      className="bg-red-600 hover:bg-red-700"
-                      disabled={cancelLeaveMutation.isPending}
-                    >
-                      {cancelLeaveMutation.isPending ? 'Cancelling...' : 'Cancel Request'}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
+            <div className="flex items-center space-x-3">
+              {canCancelLeave && (
+                <Button variant="outline" asChild>
+                  <Link href={`/leaves/${leave.id}/edit`}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Request
+                  </Link>
+                </Button>
+              )}
+              {canCancelLeave && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" className="text-red-600 hover:text-red-700">
+                      <X className="h-4 w-4 mr-2" />
+                      Delete Request
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Leave Request</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete this leave request? This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Keep Request</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleCancelLeave}
+                        className="bg-red-600 hover:bg-red-700"
+                        disabled={cancelLeaveMutation.isPending}
+                      >
+                        {cancelLeaveMutation.isPending ? 'Deleting...' : 'Delete Request'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
           </div>
         </div>
 
