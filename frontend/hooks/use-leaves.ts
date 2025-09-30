@@ -5,61 +5,44 @@ import { api, leaveApi } from '@/lib/api';
 import { LeaveRequest, CreateLeaveRequest, UpdateLeaveRequest, LeaveBalance, LeaveType } from '@/types/leave';
 import { toast } from 'sonner';
 
-// Get user's own leave requests
+// Get user's own leave requests - INTEGRATED WITH BACKEND
 export const useMyLeaves = (status?: string) => {
   return useQuery({
     queryKey: ['myLeaves', status],
     queryFn: async (): Promise<LeaveRequest[]> => {
-      const mockLeaves = [
-        {
-          id: '1',
-          userId: '1',
-          leaveTypeId: '1',
-          startDate: '2026-02-15',
-          endDate: '2026-02-19',
-          totalDays: 5,
-          reason: 'Family vacation to celebrate anniversary',
-          status: 'PENDING_RM',
-          appliedAt: '2024-12-20T10:00:00Z',
-          leaveType: { id: '1', name: 'Annual Leave', maxDays: 25, carryForward: true, requiresApproval: true },
-          reportingManagerId: '2',
-          hrManagerId: '3',
-          user: { id: '1', email: 'demo@company.com', firstName: 'John', lastName: 'Doe', role: 'EMPLOYEE', department: 'Engineering' },
-        },
-        {
-          id: '2',
-          userId: '1',
-          leaveTypeId: '2',
-          startDate: '2026-01-30',
-          endDate: '2026-01-31',
-          totalDays: 2,
-          reason: 'Doctor appointment and medical tests scheduled',
-          status: 'PENDING_HR',
-          appliedAt: '2024-12-26T10:15:00Z',
-          leaveType: { id: '2', name: 'Sick Leave', maxDays: 10, carryForward: false, requiresApproval: true },
-          reportingManagerId: '2',
-          hrManagerId: '3',
-          rmApprovedAt: '2024-12-26T16:45:00Z',
-          rmApprovedBy: '2',
-          user: { id: '1', email: 'demo@company.com', firstName: 'John', lastName: 'Doe', role: 'EMPLOYEE', department: 'Engineering' },
-        },
-        {
-          id: '3',
-          userId: '1',
-          leaveTypeId: '1',
-          startDate: '2024-11-28',
-          endDate: '2024-11-29',
-          totalDays: 2,
-          reason: 'Thanksgiving holiday with extended family',
-          status: 'APPROVED',
-          appliedAt: '2026-11-20T15:00:00Z',
-          approvedAt: '2026-11-21T09:15:00Z',
-          leaveType: { id: '1', name: 'Annual Leave', maxDays: 25, carryForward: true, requiresApproval: true },
-          user: { id: '1', email: 'demo@company.com', firstName: 'John', lastName: 'Doe', role: 'EMPLOYEE', department: 'Engineering' },
-        },
-      ];
-      
-      return status ? mockLeaves.filter(leave => leave.status === status) : mockLeaves;
+      try {
+        const response = await leaveApi.getMyLeaves(); // GET /leaves
+        const apiLeaves = response.data?.data || response.data;
+        
+        // Map backend response to frontend type
+        const mappedLeaves: LeaveRequest[] = apiLeaves.map((leave: any) => ({
+          id: leave.id,
+          userId: leave.employeeId,
+          leaveTypeId: String(leave.leaveType),
+          startDate: leave.startDate,
+          endDate: leave.endDate,
+          totalDays: leave.totalDays,
+          reason: leave.reason,
+          status: leave.status,
+          appliedAt: leave.appliedAt,
+          attachmentUrl: leave.documents,
+          leaveType: {
+            id: String(leave.leaveType),
+            name: String(leave.leaveType),
+            maxDays: 25, // Default value
+            carryForward: true,
+            requiresApproval: true,
+          },
+          reportingManagerId: leave.employee?.reportingManagerId,
+          hrManagerId: undefined, // Not in backend response
+        }));
+        
+        return status ? mappedLeaves.filter(leave => leave.status === status) : mappedLeaves;
+      } catch (error) {
+        console.error('Error fetching leaves:', error);
+        // Fallback to empty array on error
+        return [];
+      }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -71,39 +54,27 @@ export const useApplyLeave = () => {
 
   return useMutation({
     mutationFn: async (data: CreateLeaveRequest | FormData): Promise<LeaveRequest> => {
-      // Mock implementation - replace with actual API call
       let leaveData: any;
       
       if (data instanceof FormData) {
-        // Handle FormData for file uploads
         leaveData = {
-          leaveTypeId: data.get('leaveTypeId'),
+          leaveType: data.get('leaveTypeId'), // Map leaveTypeId to leaveType for backend
           startDate: data.get('startDate'),
           endDate: data.get('endDate'),
           reason: data.get('reason'),
-          totalDays: parseInt(data.get('totalDays') as string),
-          file: data.get('file'),
+          documents: data.get('file') ? 'uploaded_document.pdf' : undefined, // Handle file upload
         };
       } else {
-        leaveData = data;
+        leaveData = {
+          leaveType: data.leaveTypeId, // Map leaveTypeId to leaveType for backend
+          startDate: data.startDate,
+          endDate: data.endDate,
+          reason: data.reason,
+        };
       }
       
-      const newLeave: LeaveRequest = {
-        id: Date.now().toString(),
-        userId: '1',
-        leaveTypeId: leaveData.leaveTypeId,
-        startDate: leaveData.startDate,
-        endDate: leaveData.endDate,
-        totalDays: leaveData.totalDays,
-        reason: leaveData.reason,
-        status: 'PENDING',
-        appliedAt: new Date().toISOString(),
-        attachmentUrl: leaveData.file ? `/uploads/${leaveData.file.name}` : undefined,
-      };
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return newLeave;
+      const response = await leaveApi.applyLeave(leaveData);
+      return response.data?.data || response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['myLeaves'] });
@@ -112,8 +83,8 @@ export const useApplyLeave = () => {
       toast.success('Leave application submitted successfully');
     },
     onError: (error: any) => {
-      // Don't show toast error here as we handle it in the component
       console.error('Leave application error:', error);
+      toast.error(error.response?.data?.message || 'Failed to submit leave application');
     },
   });
 };
@@ -123,149 +94,46 @@ export const usePendingApprovals = () => {
   return useQuery({
     queryKey: ['pendingApprovals'],
     queryFn: async (): Promise<LeaveRequest[]> => {
-      const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{"id":"2","role":"MANAGER"}');
-      
-      // Mock data for demo - replace with actual API call
-      const mockPendingApprovals: LeaveRequest[] = [
-        {
-          id: '10',
-          userId: '4',
-          leaveTypeId: '1',
-          startDate: '2025-01-15',
-          endDate: '2025-01-19',
-          totalDays: 5,
-          reason: 'Planning a family trip to celebrate my parents\' 25th wedding anniversary. This is a once-in-a-lifetime celebration and we have already made non-refundable bookings.',
-          status: 'PENDING_RM',
-          appliedAt: '2024-12-20T11:00:00Z',
-          user: { id: '4', email: 'sarah@company.com', firstName: 'Sarah', lastName: 'Wilson', role: 'EMPLOYEE', department: 'Engineering' },
-          leaveType: { id: '1', name: 'Annual Leave', maxDays: 25, carryForward: true, requiresApproval: true },
-          reportingManagerId: '2',
-          hrManagerId: '3',
-        },
-        {
-          id: '11',
-          userId: '5',
-          leaveTypeId: '2',
-          startDate: '2025-01-20',
-          endDate: '2025-01-24',
-          totalDays: 5,
-          reason: 'Diagnosed with severe flu and doctor has recommended complete bed rest for recovery. Medical certificate will be provided.',
-          status: 'PENDING_HR',
-          appliedAt: '2024-12-21T08:30:00Z',
-          user: { id: '5', email: 'mike@company.com', firstName: 'Mike', lastName: 'Chen', role: 'EMPLOYEE', department: 'Engineering' },
-          leaveType: { id: '2', name: 'Sick Leave', maxDays: 10, carryForward: false, requiresApproval: true },
-          reportingManagerId: '2',
-          hrManagerId: '3',
-          rmApprovedAt: '2024-12-21T14:30:00Z',
-          rmApprovedBy: '2',
-        },
-        {
-          id: '12',
-          userId: '6',
-          leaveTypeId: '3',
-          startDate: '2025-02-03',
-          endDate: '2025-02-03',
-          totalDays: 1,
-          reason: 'Need to attend my child\'s school parent-teacher conference which is scheduled during work hours.',
-          status: 'PENDING_RM',
-          appliedAt: '2024-12-22T14:15:00Z',
-          user: { id: '6', email: 'alex@company.com', firstName: 'Alex', lastName: 'Johnson', role: 'EMPLOYEE', department: 'Marketing' },
-          leaveType: { id: '3', name: 'Personal Leave', maxDays: 5, carryForward: false, requiresApproval: true },
-          reportingManagerId: '7', // Different manager
-          hrManagerId: '3',
-        },
-        {
-          id: '13',
-          userId: '7',
-          leaveTypeId: '1',
-          startDate: '2025-03-10',
-          endDate: '2025-03-14',
-          totalDays: 5,
-          reason: 'Spring break vacation with family. We have planned this trip months in advance and have already booked flights and accommodation.',
-          status: 'PENDING_HR',
-          appliedAt: '2024-12-23T16:45:00Z',
-          user: { id: '7', email: 'emma@company.com', firstName: 'Emma', lastName: 'Davis', role: 'EMPLOYEE', department: 'Design' },
-          leaveType: { id: '1', name: 'Annual Leave', maxDays: 25, carryForward: true, requiresApproval: true },
-          reportingManagerId: '8', // Different manager
-          hrManagerId: '3',
-          rmApprovedAt: '2024-12-23T18:30:00Z',
-          rmApprovedBy: '8',
-        },
-        {
-          id: '14',
-          userId: '8',
-          leaveTypeId: '2',
-          startDate: '2025-01-27',
-          endDate: '2025-01-28',
-          totalDays: 2,
-          reason: 'Medical procedure scheduled at the hospital. Recovery time recommended by doctor.',
-          status: 'PENDING_RM',
-          appliedAt: '2024-12-24T09:20:00Z',
-          user: { id: '8', email: 'david@company.com', firstName: 'David', lastName: 'Brown', role: 'EMPLOYEE', department: 'Engineering' },
-          leaveType: { id: '2', name: 'Sick Leave', maxDays: 10, carryForward: false, requiresApproval: true },
-          reportingManagerId: '2',
-          hrManagerId: '3',
-        },
-        {
-          id: '15',
-          userId: '9',
-          leaveTypeId: '4',
-          startDate: '2025-02-10',
-          endDate: '2025-04-10',
-          totalDays: 45,
-          reason: 'Maternity leave for upcoming childbirth. Expected delivery date is February 15th.',
-          status: 'PENDING_HR',
-          appliedAt: '2024-12-25T10:30:00Z',
-          user: { id: '9', email: 'lisa@company.com', firstName: 'Lisa', lastName: 'Martinez', role: 'EMPLOYEE', department: 'HR' },
-          leaveType: { id: '4', name: 'Maternity/Paternity Leave', maxDays: 90, carryForward: false, requiresApproval: true },
-          reportingManagerId: '10', // Different manager
-          hrManagerId: '3',
-          rmApprovedAt: '2024-12-25T12:45:00Z',
-          rmApprovedBy: '10',
-        },
-        {
-          id: '16',
-          userId: '10',
-          leaveTypeId: '1',
-          startDate: '2025-01-30',
-          endDate: '2025-02-02',
-          totalDays: 4,
-          reason: 'Long weekend trip to attend cousin\'s wedding out of state.',
-          status: 'PENDING_RM',
-          appliedAt: '2024-12-26T15:20:00Z',
-          user: { id: '10', email: 'tom@company.com', firstName: 'Tom', lastName: 'Anderson', role: 'EMPLOYEE', department: 'Finance' },
-          leaveType: { id: '1', name: 'Annual Leave', maxDays: 25, carryForward: true, requiresApproval: true },
-          reportingManagerId: '11', // Different manager
-          hrManagerId: '3',
-        },
-        {
-          id: '17',
-          userId: '11',
-          leaveTypeId: '3',
-          startDate: '2025-02-14',
-          endDate: '2025-02-14',
-          totalDays: 1,
-          reason: 'Valentine\'s Day - special anniversary celebration with spouse.',
-          status: 'PENDING_RM',
-          appliedAt: '2024-12-27T11:45:00Z',
-          user: { id: '11', email: 'rachel@company.com', firstName: 'Rachel', lastName: 'Kim', role: 'EMPLOYEE', department: 'Marketing' },
-          leaveType: { id: '3', name: 'Personal Leave', maxDays: 5, carryForward: false, requiresApproval: true },
-          reportingManagerId: '7', // Different manager
-          hrManagerId: '3',
-        },
-      ];
-      
-      // Filter based on user role and permissions
-      return mockPendingApprovals.filter(leave => {
-        if (currentUser.role === 'MANAGER') {
-          // Managers can only see leaves where they are the reporting manager and status is PENDING_RM
-          return leave.status === 'PENDING_RM' && leave.reportingManagerId === currentUser.id;
-        } else if (currentUser.role === 'ADMIN') {
-          // HR/Admin can only see leaves with status PENDING_HR
-          return leave.status === 'PENDING_HR';
-        }
-        return false;
-      });
+      try {
+        const response = await leaveApi.getPendingApprovals(); // GET /approvals/pending
+        const apiLeaves = response.data?.data || response.data;
+        
+        // Map backend response to frontend type
+        const mappedLeaves: LeaveRequest[] = apiLeaves.map((leave: any) => ({
+          id: leave.id,
+          userId: leave.employeeId,
+          leaveTypeId: String(leave.leaveType),
+          startDate: leave.startDate,
+          endDate: leave.endDate,
+          totalDays: leave.totalDays,
+          reason: leave.reason,
+          status: leave.status,
+          appliedAt: leave.appliedAt,
+          attachmentUrl: leave.documents,
+          leaveType: {
+            id: String(leave.leaveType),
+            name: String(leave.leaveType),
+            maxDays: 25,
+            carryForward: true,
+            requiresApproval: true,
+          },
+          reportingManagerId: leave.employee?.reportingManagerId,
+          hrManagerId: undefined,
+          user: leave.employee ? {
+            id: leave.employee.id,
+            email: leave.employee.email,
+            firstName: leave.employee.name?.split(' ')[0] || '',
+            lastName: leave.employee.name?.split(' ').slice(1).join(' ') || '',
+            role: leave.employee.role,
+            department: leave.employee.department,
+          } : undefined,
+        }));
+        
+        return mappedLeaves;
+      } catch (error) {
+        console.error('Error fetching pending approvals:', error);
+        return [];
+      }
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
@@ -277,25 +145,10 @@ export const useApproveLeave = () => {
 
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: UpdateLeaveRequest & { approvalComment?: string } }): Promise<LeaveRequest> => {
-      // Mock implementation - replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      const updatedLeave: LeaveRequest = {
-        id,
-        userId: '1',
-        leaveTypeId: '1',
-        startDate: '2025-01-28',
-        endDate: '2025-01-28',
-        totalDays: 5,
-        reason: 'Personal appointment that cannot be rescheduled',
-        status: data.status,
-        appliedAt: '2024-12-23T10:00:00Z',
-        approvedAt: new Date().toISOString(),
-        approvedBy: '2', // Manager ID
-        rejectionReason: data.rejectionReason,
-      };
-      
-      return updatedLeave;
+      const response = await leaveApi.approveLeave(id, {
+        comments: data.approvalComment,
+      });
+      return response.data?.data || response.data;
     },
     onSuccess: (_, { data }) => {
       queryClient.invalidateQueries({ queryKey: ['pendingApprovals'] });
@@ -315,138 +168,30 @@ export const useLeaveDetails = (id: string) => {
   return useQuery({
     queryKey: ['leaveDetails', id],
     queryFn: async (): Promise<LeaveRequest> => {
-      // Mock implementation - replace with actual API call
-      const mockLeaveDetails: { [key: string]: LeaveRequest } = {
-        '1': {
-          id: '1',
-          userId: '1',
-          leaveTypeId: '1',
-          startDate: '2026-02-15',
-          endDate: '2026-02-19',
-          totalDays: 5,
-          reason: 'Family vacation to celebrate our wedding anniversary. We have planned this trip for months and have already made non-refundable bookings.',
-          status: 'PENDING_RM',
-          appliedAt: '2024-12-20T10:00:00Z',
-          user: { id: '1', email: 'demo@company.com', firstName: 'John', lastName: 'Doe', role: 'EMPLOYEE', department: 'Engineering' },
-          leaveType: { id: '1', name: 'Annual Leave', maxDays: 25, carryForward: true, requiresApproval: true },
-          reportingManagerId: '2',
-          hrManagerId: '3',
+      const response = await leaveApi.getLeaveDetails(id);
+      const leave = response.data?.data || response.data;
+      
+      return {
+        id: leave.id,
+        userId: leave.employeeId,
+        leaveTypeId: String(leave.leaveType),
+        startDate: leave.startDate,
+        endDate: leave.endDate,
+        totalDays: leave.totalDays,
+        reason: leave.reason,
+        status: leave.status,
+        appliedAt: leave.appliedAt,
+        attachmentUrl: leave.documents,
+        leaveType: {
+          id: String(leave.leaveType),
+          name: String(leave.leaveType),
+          maxDays: 25,
+          carryForward: true,
+          requiresApproval: true,
         },
-        '2': {
-          id: '2',
-          userId: '1',
-          leaveTypeId: '2',
-          startDate: '2026-12-18',
-          endDate: '2026-12-18',
-          totalDays: 1,
-          reason: 'Flu symptoms and fever - doctor recommended rest',
-          status: 'PENDING_HR',
-          appliedAt: '2024-12-17T09:00:00Z',
-          user: { id: '1', email: 'demo@company.com', firstName: 'John', lastName: 'Doe', role: 'EMPLOYEE', department: 'Engineering' },
-          leaveType: { id: '2', name: 'Sick Leave', maxDays: 10, carryForward: false, requiresApproval: true },
-          reportingManagerId: '2',
-          hrManagerId: '3',
-          rmApprovedAt: '2024-12-17T11:30:00Z',
-          rmApprovedBy: '2',
-        },
-        '10': {
-          id: '10',
-          userId: '1',
-          leaveTypeId: '2',
-          startDate: '2024-08-12',
-          endDate: '2024-08-14',
-          totalDays: 3,
-          reason: 'Food poisoning recovery - medical certificate attached',
-          status: 'APPROVED',
-          appliedAt: '2024-08-11T07:30:00Z',
-          rmApprovedAt: '2024-08-11T13:45:00Z',
-          rmApprovedBy: '2',
-          hrApprovedAt: '2024-08-11T15:30:00Z',
-          hrApprovedBy: '3',
-          attachmentUrl: '/uploads/medical_certificate_aug.pdf',
-          user: { id: '1', email: 'demo@company.com', firstName: 'John', lastName: 'Doe', role: 'EMPLOYEE', department: 'Engineering' },
-          leaveType: { id: '2', name: 'Sick Leave', maxDays: 10, carryForward: false, requiresApproval: true },
-          reportingManagerId: '2',
-          hrManagerId: '3',
-        },
-        '11': {
-          id: '11',
-          userId: '1',
-          leaveTypeId: '4',
-          startDate: '2024-07-01',
-          endDate: '2024-08-30',
-          totalDays: 45,
-          reason: 'Paternity leave for newborn child - birth certificate attached',
-          status: 'APPROVED',
-          appliedAt: '2024-06-15T10:00:00Z',
-          rmApprovedAt: '2024-06-16T14:30:00Z',
-          rmApprovedBy: '2',
-          hrApprovedAt: '2024-06-16T16:45:00Z',
-          hrApprovedBy: '3',
-          attachmentUrl: '/uploads/birth_certificate.pdf',
-          user: { id: '1', email: 'demo@company.com', firstName: 'John', lastName: 'Doe', role: 'EMPLOYEE', department: 'Engineering' },
-          leaveType: { id: '4', name: 'Maternity/Paternity Leave', maxDays: 90, carryForward: false, requiresApproval: true },
-          reportingManagerId: '2',
-          hrManagerId: '3',
-        },
-        '7': {
-          id: '7',
-          userId: '1',
-          leaveTypeId: '1',
-          startDate: '2024-09-20',
-          endDate: '2024-09-22',
-          totalDays: 3,
-          reason: 'Weekend getaway extension - requested additional day off',
-          status: 'REJECTED',
-          appliedAt: '2024-09-15T12:00:00Z',
-          rmApprovedAt: '2024-09-16T10:30:00Z',
-          rmApprovedBy: '2',
-          rejectionReason: 'Insufficient leave balance for this period. You have already used 15 days this year and only have 10 remaining.',
-          user: { id: '1', email: 'demo@company.com', firstName: 'John', lastName: 'Doe', role: 'EMPLOYEE', department: 'Engineering' },
-          leaveType: { id: '1', name: 'Annual Leave', maxDays: 25, carryForward: true, requiresApproval: true },
-          reportingManagerId: '2',
-          hrManagerId: '3',
-        },
-        '13': {
-          id: '13',
-          userId: '1',
-          leaveTypeId: '1',
-          startDate: '2025-02-10',
-          endDate: '2025-02-14',
-          totalDays: 5,
-          reason: 'Winter vacation with family - planning to visit the mountains for skiing',
-          status: 'PENDING_RM',
-          appliedAt: '2024-12-27T14:30:00Z',
-          user: { id: '1', email: 'demo@company.com', firstName: 'John', lastName: 'Doe', role: 'EMPLOYEE', department: 'Engineering' },
-          leaveType: { id: '1', name: 'Annual Leave', maxDays: 25, carryForward: true, requiresApproval: true },
-          reportingManagerId: '2',
-          hrManagerId: '3',
-        },
-        '14': {
-          id: '14',
-          userId: '1',
-          leaveTypeId: '2',
-          startDate: '2025-01-30',
-          endDate: '2025-01-31',
-          totalDays: 2,
-          reason: 'Doctor appointment and medical tests scheduled',
-          status: 'PENDING_HR',
-          appliedAt: '2024-12-26T10:15:00Z',
-          user: { id: '1', email: 'demo@company.com', firstName: 'John', lastName: 'Doe', role: 'EMPLOYEE', department: 'Engineering' },
-          leaveType: { id: '2', name: 'Sick Leave', maxDays: 10, carryForward: false, requiresApproval: true },
-          reportingManagerId: '2',
-          hrManagerId: '3',
-          rmApprovedAt: '2024-12-26T16:45:00Z',
-          rmApprovedBy: '2',
-        },
+        reportingManagerId: leave.employee?.reportingManagerId,
+        hrManagerId: undefined,
       };
-      
-      const leave = mockLeaveDetails[id];
-      if (!leave) {
-        throw new Error('Leave request not found');
-      }
-      
-      return leave;
     },
     enabled: !!id,
     staleTime: 10 * 60 * 1000, // 10 minutes
@@ -458,164 +203,43 @@ export const useLeaveHistory = (filters?: { year?: number; status?: string; user
   return useQuery({
     queryKey: ['leaveHistory', filters],
     queryFn: async (): Promise<LeaveRequest[]> => {
-      // Mock implementation - replace with actual API call
-      const mockHistory: LeaveRequest[] = [
-        {
-          id: '1',
-          userId: '1',
-          leaveTypeId: '1',
-          startDate: '2024-11-28',
-          endDate: '2024-11-29',
-          totalDays: 2,
-          reason: 'Thanksgiving holiday with extended family',
-          status: 'PENDING',
-          appliedAt: '2024-11-20T15:00:00Z',
-          rmApprovedAt: '2024-11-21T09:15:00Z',
-          rmApprovedBy: '2',
-          hrApprovedAt: '2024-11-21T16:45:00Z',
-          hrApprovedBy: '3',
-          leaveType: { id: '1', name: 'Annual Leave', maxDays: 25, carryForward: true, requiresApproval: true },
-          reportingManagerId: '2',
-          hrManagerId: '3',
-        },
-        {
-          id: '2',
-          userId: '1',
-          leaveTypeId: '2',
-          startDate: '2024-10-15',
-          endDate: '2024-10-16',
-          totalDays: 2,
-          reason: 'Medical procedure and recovery',
-          status: 'APPROVED',
-          appliedAt: '2024-10-10T08:30:00Z',
-          rmApprovedAt: '2024-10-10T16:45:00Z',
-          rmApprovedBy: '2',
-          hrApprovedAt: '2024-10-11T09:30:00Z',
-          hrApprovedBy: '3',
-          leaveType: { id: '2', name: 'Sick Leave', maxDays: 10, carryForward: false, requiresApproval: true },
-          reportingManagerId: '2',
-          hrManagerId: '3',
-        },
-        {
-          id: '3',
-          userId: '1',
-          leaveTypeId: '1',
-          startDate: '2024-09-20',
-          endDate: '2024-09-22',
-          totalDays: 3,
-          reason: 'Weekend getaway extension',
-          status: 'REJECTED',
-          appliedAt: '2024-09-15T12:00:00Z',
-          rmApprovedAt: '2024-09-16T10:30:00Z',
-          rmApprovedBy: '2',
-          rejectionReason: 'Insufficient leave balance for this period',
-          leaveType: { id: '1', name: 'Annual Leave', maxDays: 25, carryForward: true, requiresApproval: true },
-          reportingManagerId: '2',
-          hrManagerId: '3',
-        },
-        {
-          id: '4',
-          userId: '1',
-          leaveTypeId: '2',
-          startDate: '2024-08-12',
-          endDate: '2024-08-14',
-          totalDays: 3,
-          reason: 'Food poisoning recovery',
-          status: 'PENDING',
-          appliedAt: '2024-08-11T07:30:00Z',
-          rmApprovedAt: '2024-08-11T13:45:00Z',
-          rmApprovedBy: '2',
-          hrApprovedAt: '2024-08-11T15:30:00Z',
-          hrApprovedBy: '3',
-          attachmentUrl: '/uploads/medical_certificate_aug.pdf',
-          leaveType: { id: '2', name: 'Sick Leave', maxDays: 10, carryForward: false, requiresApproval: true },
-          reportingManagerId: '2',
-          hrManagerId: '3',
-        },
-        {
-          id: '5',
-          userId: '1',
-          leaveTypeId: '4',
-          startDate: '2024-07-01',
-          endDate: '2024-08-30',
-          totalDays: 45,
-          reason: 'Paternity leave for newborn child',
-          status: 'PENDING',
-          appliedAt: '2024-06-15T10:00:00Z',
-          rmApprovedAt: '2024-06-16T14:30:00Z',
-          rmApprovedBy: '2',
-          hrApprovedAt: '2024-06-16T16:45:00Z',
-          hrApprovedBy: '3',
-          attachmentUrl: '/uploads/birth_certificate.pdf',
-          leaveType: { id: '4', name: 'Maternity/Paternity Leave', maxDays: 90, carryForward: false, requiresApproval: true },
-          reportingManagerId: '2',
-          hrManagerId: '3',
-        },
-        {
-          id: '6',
-          userId: '1',
-          leaveTypeId: '1',
-          startDate: '2024-05-20',
-          endDate: '2024-05-24',
-          totalDays: 5,
-          reason: 'Summer vacation with friends',
-          status: 'CANCELLED',
-          appliedAt: '2024-05-10T12:00:00Z',
-          leaveType: { id: '1', name: 'Annual Leave', maxDays: 25, carryForward: true, requiresApproval: true },
-          reportingManagerId: '2',
-          hrManagerId: '3',
-        },
-        {
-          id: '7',
-          userId: '1',
-          leaveTypeId: '3',
-          startDate: '2024-04-22',
-          endDate: '2024-04-22',
-          totalDays: 1,
-          reason: 'Personal appointment with lawyer',
-          status: 'APPROVED',
-          appliedAt: '2024-04-18T14:20:00Z',
-          rmApprovedAt: '2024-04-19T10:15:00Z',
-          rmApprovedBy: '2',
-          hrApprovedAt: '2024-04-19T14:30:00Z',
-          hrApprovedBy: '3',
-          leaveType: { id: '3', name: 'Personal Leave', maxDays: 5, carryForward: false, requiresApproval: true },
-          reportingManagerId: '2',
-          hrManagerId: '3',
-        },
-        {
-          id: '8',
-          userId: '1',
-          leaveTypeId: '1',
-          startDate: '2024-03-15',
-          endDate: '2024-03-18',
-          totalDays: 4,
-          reason: 'Spring break vacation',
-          status: 'APPROVED',
-          appliedAt: '2024-03-01T11:30:00Z',
-          rmApprovedAt: '2024-03-02T16:45:00Z',
-          rmApprovedBy: '2',
-          hrApprovedAt: '2024-03-03T09:15:00Z',
-          hrApprovedBy: '3',
-          leaveType: { id: '1', name: 'Annual Leave', maxDays: 25, carryForward: true, requiresApproval: true },
-          reportingManagerId: '2',
-          hrManagerId: '3',
-        },
-      ];
+      // Use the same API as myLeaves but with filters
+      const response = await leaveApi.getMyLeaves();
+      const apiLeaves = response.data?.data || response.data;
       
-      let filteredHistory = mockHistory;
+      let filteredLeaves = apiLeaves.map((leave: any) => ({
+        id: leave.id,
+        userId: leave.employeeId,
+        leaveTypeId: String(leave.leaveType),
+        startDate: leave.startDate,
+        endDate: leave.endDate,
+        totalDays: leave.totalDays,
+        reason: leave.reason,
+        status: leave.status,
+        appliedAt: leave.appliedAt,
+        attachmentUrl: leave.documents,
+        leaveType: {
+          id: String(leave.leaveType),
+          name: String(leave.leaveType),
+          maxDays: 25,
+          carryForward: true,
+          requiresApproval: true,
+        },
+        reportingManagerId: leave.employee?.reportingManagerId,
+        hrManagerId: undefined,
+      }));
       
       if (filters?.status) {
-        filteredHistory = filteredHistory.filter(leave => leave.status === filters.status);
+        filteredLeaves = filteredLeaves.filter(leave => leave.status === filters.status);
       }
       
       if (filters?.year) {
-        filteredHistory = filteredHistory.filter(leave => 
+        filteredLeaves = filteredLeaves.filter(leave => 
           new Date(leave.startDate).getFullYear() === filters.year
         );
       }
       
-      return filteredHistory;
+      return filteredLeaves;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -625,57 +249,50 @@ export const useLeaveTypes = () => {
   return useQuery({
     queryKey: ['leaveTypes'],
     queryFn: async (): Promise<LeaveType[]> => {
-      // Mock data for demo - replace with actual API call
-      const mockLeaveTypes: LeaveType[] = [
-        { id: '1', name: 'Annual Leave', maxDays: 25, carryForward: true, requiresApproval: true },
-        { id: '2', name: 'Sick Leave', maxDays: 10, carryForward: false, requiresApproval: true },
-        { id: '3', name: 'Personal Leave', maxDays: 5, carryForward: false, requiresApproval: true },
-        { id: '4', name: 'Maternity/Paternity Leave', maxDays: 90, carryForward: false, requiresApproval: true },
+      // Return static leave types for now
+      const leaveTypes: LeaveType[] = [
+        { id: 'ANNUAL', name: 'Annual Leave', maxDays: 18, carryForward: true, requiresApproval: true },
+        { id: 'SICK', name: 'Sick Leave', maxDays: 10, carryForward: false, requiresApproval: true },
+        { id: 'PERSONAL', name: 'Personal Leave', maxDays: 12, carryForward: false, requiresApproval: true },
+        { id: 'MATERNITY_PATERNITY', name: 'Maternity/Paternity Leave', maxDays: 90, carryForward: false, requiresApproval: true },
       ];
-      return mockLeaveTypes;
+      return leaveTypes;
     },
     staleTime: 30 * 60 * 1000, // 30 minutes
   });
 };
 
+// Integrate leave balances with backend
 export const useLeaveBalances = (userId?: string) => {
   return useQuery({
     queryKey: ['leaveBalances', userId],
     queryFn: async (): Promise<LeaveBalance[]> => {
-      // Mock data for demo - replace with actual API call
-      const mockBalances: LeaveBalance[] = [
-        {
-          id: '1',
-          userId: userId || '1',
-          leaveTypeId: '1',
-          totalDays: 25,
-          usedDays: 7,
-          remainingDays: 18,
-          year: 2024,
-          leaveType: { id: '1', name: 'Annual Leave', maxDays: 25, carryForward: true, requiresApproval: true },
-        },
-        {
-          id: '2',
-          userId: userId || '1',
-          leaveTypeId: '2',
-          totalDays: 10,
-          usedDays: 3,
-          remainingDays: 7,
-          year: 2024,
-          leaveType: { id: '2', name: 'Sick Leave', maxDays: 10, carryForward: false, requiresApproval: true },
-        },
-        {
-          id: '3',
-          userId: userId || '1',
-          leaveTypeId: '3',
-          totalDays: 5,
-          usedDays: 0,
-          remainingDays: 5,
-          year: 2024,
-          leaveType: { id: '3', name: 'Personal Leave', maxDays: 5, carryForward: false, requiresApproval: true },
-        },
-      ];
-      return mockBalances;
+      try {
+        const response = await leaveApi.getLeaveBalances(); // GET /leaves/balances
+        const apiBalances = response.data?.data || response.data;
+        
+        // Map backend entity to frontend type
+        const mapped: LeaveBalance[] = apiBalances.map((b: any) => ({
+          id: b.id,
+          userId: b.employeeId,
+          leaveTypeId: String(b.leaveType),
+          totalDays: b.allocated ?? 0,
+          usedDays: b.used ?? 0,
+          remainingDays: b.remaining ?? Math.max((b.allocated ?? 0) - (b.used ?? 0), 0),
+          year: b.year,
+          leaveType: {
+            id: String(b.leaveType),
+            name: String(b.leaveType),
+            maxDays: b.allocated ?? 0,
+            carryForward: !!b.carryForward,
+            requiresApproval: true,
+          },
+        }));
+        return mapped;
+      } catch (error) {
+        console.error('Error fetching leave balances:', error);
+        return [];
+      }
     },
     staleTime: 10 * 60 * 1000, // 10 minutes
   });
@@ -687,18 +304,60 @@ export const useCancelLeave = () => {
 
   return useMutation({
     mutationFn: async (id: string): Promise<void> => {
-      // Mock implementation - replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await leaveApi.cancelLeave(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['myLeaves'] });
       queryClient.invalidateQueries({ queryKey: ['pendingApprovals'] });
       queryClient.invalidateQueries({ queryKey: ['leaveBalances'] });
       queryClient.invalidateQueries({ queryKey: ['leaveHistory'] });
-      toast.success('Leave request deleted successfully');
+      toast.success('Leave request cancelled successfully');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to delete leave request');
+      toast.error(error.response?.data?.message || 'Failed to cancel leave request');
+    },
+  });
+};
+
+// Update leave request
+export const useUpdateLeave = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: CreateLeaveRequest | FormData }): Promise<LeaveRequest> => {
+      let leaveData: any;
+      
+      if (data instanceof FormData) {
+        leaveData = {
+          leaveType: data.get('leaveTypeId'), // Map leaveTypeId to leaveType for backend
+          startDate: data.get('startDate'),
+          endDate: data.get('endDate'),
+          reason: data.get('reason'),
+          documents: data.get('file') ? 'uploaded_document.pdf' : undefined, // Handle file upload
+        };
+      } else {
+        leaveData = {
+          leaveType: data.leaveTypeId, // Map leaveTypeId to leaveType for backend
+          startDate: data.startDate,
+          endDate: data.endDate,
+          reason: data.reason,
+        };
+      }
+      
+      const response = await leaveApi.updateLeave(id, leaveData);
+      return response.data?.data || response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['myLeaves'] });
+      queryClient.invalidateQueries({ queryKey: ['leaveDetails'] });
+      queryClient.invalidateQueries({ queryKey: ['pendingApprovals'] });
+      queryClient.invalidateQueries({ queryKey: ['leaveBalances'] });
+      queryClient.invalidateQueries({ queryKey: ['leaveHistory'] });
+      toast.success('Leave request updated successfully');
+    },
+    onError: (error: any) => {
+      console.error('Leave update error:', error);
+      toast.error(error.response?.data?.message || 'Failed to update leave request');
     },
   });
 };
@@ -712,86 +371,15 @@ export const useCreateLeaveRequest = () => {
   return useApplyLeave();
 };
 
-// Update leave request
-export const useUpdateLeave = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: CreateLeaveRequest | FormData }): Promise<LeaveRequest> => {
-      // Mock implementation - replace with actual API call
-      let leaveData: any;
-      
-      if (data instanceof FormData) {
-        // Handle FormData for file uploads
-        leaveData = {
-          leaveTypeId: data.get('leaveTypeId'),
-          startDate: data.get('startDate'),
-          endDate: data.get('endDate'),
-          reason: data.get('reason'),
-          totalDays: parseInt(data.get('totalDays') as string),
-          file: data.get('file'),
-        };
-      } else {
-        leaveData = data;
-      }
-      
-      const updatedLeave: LeaveRequest = {
-        id,
-        userId: '1',
-        leaveTypeId: leaveData.leaveTypeId,
-        startDate: leaveData.startDate,
-        endDate: leaveData.endDate,
-        totalDays: leaveData.totalDays,
-        reason: leaveData.reason,
-        status: 'PENDING_RM', // Reset to pending RM when edited
-        appliedAt: new Date().toISOString(), // Update applied time
-        attachmentUrl: leaveData.file ? `/uploads/${leaveData.file.name}` : undefined,
-        reportingManagerId: '2',
-        hrManagerId: '3',
-      };
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return updatedLeave;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['myLeaves'] });
-      queryClient.invalidateQueries({ queryKey: ['leaveDetails'] });
-      queryClient.invalidateQueries({ queryKey: ['pendingApprovals'] });
-      queryClient.invalidateQueries({ queryKey: ['leaveBalances'] });
-      queryClient.invalidateQueries({ queryKey: ['leaveHistory'] });
-      toast.success('Leave request updated successfully');
-    },
-    onError: (error: any) => {
-      // Don't show toast error here as we handle it in the component
-      console.error('Leave update error:', error);
-    },
-  });
-};
-
 export const useUpdateLeaveRequest = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: UpdateLeaveRequest }): Promise<LeaveRequest> => {
-      // Mock implementation - replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      const updatedLeave: LeaveRequest = {
-        id,
-        userId: '1',
-        leaveTypeId: '1',
-        startDate: '2024-12-20',
-        endDate: '2024-12-22',
-        totalDays: 3,
-        reason: 'Family vacation',
-        status: data.status,
-        appliedAt: '2024-12-15T10:00:00Z',
-        approvedAt: new Date().toISOString(),
-        rejectionReason: data.rejectionReason,
-      };
-      
-      return updatedLeave;
+      const response = await leaveApi.approveLeave(id, {
+        comments: data.rejectionReason,
+      });
+      return response.data?.data || response.data;
     },
     onSuccess: (_, { data }) => {
       queryClient.invalidateQueries({ queryKey: ['myLeaves'] });
@@ -809,4 +397,28 @@ export const useUpdateLeaveRequest = () => {
 
 export const useCancelLeaveRequest = () => {
   return useCancelLeave();
+};
+
+// Get approval history for a leave
+export const useApprovalHistory = (id: string) => {
+  return useQuery({
+    queryKey: ['approvalHistory', id],
+    queryFn: async (): Promise<Array<{ id: string; action: string; comments?: string; timestamp: string; approver?: { name?: string; role?: string } }>> => {
+      const response = await leaveApi.getApprovalHistory(id);
+      const data = response.data?.data || response.data;
+      const approvals = Array.isArray(data?.approvals) ? data.approvals : data;
+      return approvals?.map((a: any) => ({
+        id: a.id,
+        action: String(a.action || a.status || '').toUpperCase(),
+        comments: a.comments,
+        timestamp: a.timestamp || a.createdAt || a.updatedAt,
+        approver: a.approver || a.employee ? {
+          name: a.approver?.name || a.employee?.name,
+          role: a.approver?.role || a.employee?.role,
+        } : undefined,
+      })) || [];
+    },
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000,
+  });
 };

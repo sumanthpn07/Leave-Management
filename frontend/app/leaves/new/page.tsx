@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useApplyLeave, useLeaveTypes } from '@/hooks/use-leaves';
 import { ProtectedRoute } from '@/components/auth/protected-route';
-import { Calendar, Upload, TriangleAlert as AlertTriangle, ArrowLeft, X, FileText } from 'lucide-react';
+import { Calendar, Upload, TriangleAlert as AlertTriangle, X, FileText } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { format, differenceInBusinessDays, isWeekend, addDays } from 'date-fns';
@@ -184,12 +184,6 @@ export default function NewLeavePage() {
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-6">
-            <Button variant="ghost" asChild className="mb-4">
-              <Link href="/leaves">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Leaves
-              </Link>
-            </Button>
             <h1 className="text-2xl font-bold text-gray-900">Apply for Leave</h1>
             <p className="text-gray-600">Submit a new leave request for approval</p>
           </div>

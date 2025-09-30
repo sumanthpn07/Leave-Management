@@ -2,15 +2,6 @@ import { Suspense } from 'react';
 import { ProtectedRoute } from '@/components/auth/protected-route';
 import { LeaveDetailsClient } from '@/components/leaves/leave-details-client';
 
-export async function generateStaticParams() {
-  // Return the IDs from the mock data in useLeaveDetails hook
-  return [
-    { id: '1' },
-    { id: '2' },
-    { id: '3' },
-  ];
-}
-
 interface PageProps {
   params: {
     id: string;

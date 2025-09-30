@@ -5,6 +5,7 @@ import { authApi } from '@/lib/api';
 import { User, LoginCredentials, AuthResponse } from '@/types/auth';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface AuthContextType {
   user: User | null;
@@ -34,6 +35,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   // Initialize auth state from localStorage
   useEffect(() => {
@@ -81,7 +83,31 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const logout = () => {
-    localStorage.removeItem('authToken');
+    try {
+      // Clear all localStorage data
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('currentUser');
+      
+      // Clear any cached API data
+      // This will force fresh data fetch on next login
+      if (typeof window !== 'undefined') {
+        // Clear any cached data in browser storage
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.includes('leaves') || key.includes('balances') || key.includes('approvals') || key.includes('admin'))) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+      }
+    } catch (error) {
+      console.warn('Error clearing localStorage:', error);
+    }
+    
+    // Clear React Query cache
+    queryClient.clear();
+    
     setToken(null);
     setUser(null);
     router.push('/auth/login');

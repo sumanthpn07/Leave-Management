@@ -6,8 +6,8 @@ export interface User {
   role: 'EMPLOYEE' | 'MANAGER' | 'ADMIN';
   department: string;
   managerId?: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface LeaveType {
@@ -26,7 +26,7 @@ export interface LeaveRequest {
   endDate: string;
   totalDays: number;
   reason: string;
-  status: 'PENDING_RM' | 'PENDING_HR' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+  status: 'PENDING' | 'PENDING_RM' | 'PENDING_HR' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
   appliedAt: string;
   rmApprovedAt?: string;
   rmApprovedBy?: string;

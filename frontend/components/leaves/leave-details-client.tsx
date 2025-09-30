@@ -2,34 +2,16 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useLeaveDetails, useCancelLeave } from '@/hooks/use-leaves';
+import { useLeaveDetails, useCancelLeave, useApprovalHistory } from '@/hooks/use-leaves';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Calendar, Clock, FileText, User, X, CircleCheck as CheckCircle, Circle as XCircle, CircleAlert as AlertCircle, CreditCard as Edit } from 'lucide-react';
+import { Calendar, Clock, FileText, User, X, CircleCheck as CheckCircle, Circle as XCircle, CircleAlert as AlertCircle, CreditCard as Edit } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
-
-// Mock approval history data
-const mockApprovalHistory = [
-  {
-    id: '1',
-    action: 'SUBMITTED',
-    timestamp: '2024-12-20T10:00:00Z',
-    user: { firstName: 'John', lastName: 'Doe', role: 'EMPLOYEE' },
-    comments: 'Leave application submitted for review',
-  },
-  {
-    id: '2',
-    action: 'APPROVED',
-    timestamp: '2024-12-21T14:30:00Z',
-    user: { firstName: 'Jane', lastName: 'Smith', role: 'MANAGER' },
-    comments: 'Approved - enjoy your vacation!',
-  },
-];
 
 interface LeaveDetailsClientProps {
   leaveId: string;
@@ -40,6 +22,7 @@ export function LeaveDetailsClient({ leaveId }: LeaveDetailsClientProps) {
   const { user } = useAuth();
   
   const { data: leave, isLoading, error } = useLeaveDetails(leaveId);
+  const { data: approvalHistory } = useApprovalHistory(leaveId);
   const cancelLeaveMutation = useCancelLeave();
 
   const canCancelLeave = leave && 
@@ -114,10 +97,7 @@ export function LeaveDetailsClient({ leaveId }: LeaveDetailsClientProps) {
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Leave Request Not Found</h1>
             <p className="text-gray-600 mb-6">The leave request you're looking for doesn't exist or you don't have permission to view it.</p>
             <Button asChild>
-              <Link href="/leaves">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Leaves
-              </Link>
+              <Link href="/leaves">Back to Leaves</Link>
             </Button>
           </div>
         </div>
@@ -132,12 +112,6 @@ export function LeaveDetailsClient({ leaveId }: LeaveDetailsClientProps) {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" asChild>
-                <Link href="/leaves">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Leaves
-                </Link>
-              </Button>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Leave Request Details</h1>
                 <p className="text-gray-600">Request ID: {leave.id}</p>
@@ -272,35 +246,112 @@ export function LeaveDetailsClient({ leaveId }: LeaveDetailsClientProps) {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {mockApprovalHistory.map((entry, index) => (
-                    <div key={entry.id} className="flex items-start space-x-3">
+                {approvalHistory && approvalHistory.length > 0 ? (
+                  <div className="space-y-4">
+                    {approvalHistory.map((entry, index) => (
+                      <div key={entry.id} className="flex items-start space-x-3">
+                        <div className="flex-shrink-0 mt-1">
+                          {getActionIcon(entry.action)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <span className="font-medium text-gray-900">
+                              {entry.action.charAt(0) + entry.action.slice(1).toLowerCase()}
+                            </span>
+                            {entry.approver?.name && (
+                              <span className="text-sm text-gray-500">
+                                by {entry.approver.name}
+                              </span>
+                            )}
+                            {entry.approver?.role && (
+                              <Badge variant="outline" className="text-xs">
+                                {String(entry.approver.role).toLowerCase()}
+                              </Badge>
+                            )}
+                          </div>
+                          {entry.comments && (
+                            <p className="text-sm text-gray-600 mb-1">{entry.comments}</p>
+                          )}
+                          <p className="text-xs text-gray-500">
+                            {format(new Date(entry.timestamp), 'MMM dd, yyyy at h:mm a')}
+                          </p>
+                        </div>
+                        {index < (approvalHistory?.length || 0) - 1 && (
+                          <div className="absolute left-6 mt-8 w-px h-8 bg-gray-200"></div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-start space-x-3">
                       <div className="flex-shrink-0 mt-1">
-                        {getActionIcon(entry.action)}
+                        <FileText className="h-4 w-4 text-blue-600" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center space-x-2 mb-1">
-                          <span className="font-medium text-gray-900">
-                            {entry.action.charAt(0) + entry.action.slice(1).toLowerCase()}
-                          </span>
+                          <span className="font-medium text-gray-900">Submitted</span>
                           <span className="text-sm text-gray-500">
-                            by {entry.user.firstName} {entry.user.lastName}
+                            by {user?.name || 'You'}
                           </span>
                           <Badge variant="outline" className="text-xs">
-                            {entry.user.role.toLowerCase()}
+                            {user?.role?.toLowerCase() || 'employee'}
                           </Badge>
                         </div>
-                        <p className="text-sm text-gray-600 mb-1">{entry.comments}</p>
+                        <p className="text-sm text-gray-600 mb-1">Leave application submitted for review</p>
                         <p className="text-xs text-gray-500">
-                          {format(new Date(entry.timestamp), 'MMM dd, yyyy at h:mm a')}
+                          {format(new Date(leave.appliedAt), 'MMM dd, yyyy at h:mm a')}
                         </p>
                       </div>
-                      {index < mockApprovalHistory.length - 1 && (
-                        <div className="absolute left-6 mt-8 w-px h-8 bg-gray-200"></div>
-                      )}
                     </div>
-                  ))}
-                </div>
+                    
+                    {leave.status === 'APPROVED' && (
+                      <div className="flex items-start space-x-3">
+                        <div className="flex-shrink-0 mt-1">
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <span className="font-medium text-gray-900">Approved</span>
+                            <span className="text-sm text-gray-500">
+                              by HR Manager
+                            </span>
+                            <Badge variant="outline" className="text-xs">
+                              hr_manager
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-1">Leave request approved</p>
+                          <p className="text-xs text-gray-500">
+                            {leave.hrApprovedAt ? format(new Date(leave.hrApprovedAt), 'MMM dd, yyyy at h:mm a') : 'Recently approved'}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {leave.status === 'REJECTED' && (
+                      <div className="flex items-start space-x-3">
+                        <div className="flex-shrink-0 mt-1">
+                          <XCircle className="h-4 w-4 text-red-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <span className="font-medium text-gray-900">Rejected</span>
+                            <span className="text-sm text-gray-500">
+                              by Manager
+                            </span>
+                            <Badge variant="outline" className="text-xs">
+                              manager
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-1">Leave request rejected</p>
+                          <p className="text-xs text-gray-500">
+                            Recently rejected
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -318,16 +369,16 @@ export function LeaveDetailsClient({ leaveId }: LeaveDetailsClientProps) {
                 <div>
                   <h4 className="font-medium text-gray-900 mb-1">Name</h4>
                   <p className="text-gray-600">
-                    {leave.user?.firstName} {leave.user?.lastName}
+                    {user?.name || 'Unknown User'}
                   </p>
                 </div>
                 <div>
                   <h4 className="font-medium text-gray-900 mb-1">Department</h4>
-                  <p className="text-gray-600">{leave.user?.department}</p>
+                  <p className="text-gray-600">{user?.department || 'Unknown'}</p>
                 </div>
                 <div>
                   <h4 className="font-medium text-gray-900 mb-1">Role</h4>
-                  <Badge variant="outline">{leave.user?.role.toLowerCase()}</Badge>
+                  <Badge variant="outline">{user?.role?.toLowerCase() || 'employee'}</Badge>
                 </div>
               </CardContent>
             </Card>
@@ -343,13 +394,13 @@ export function LeaveDetailsClient({ leaveId }: LeaveDetailsClientProps) {
                     {format(new Date(leave.appliedAt), 'MMM dd, yyyy at h:mm a')}
                   </p>
                 </div>
-                {leave.approvedAt && (
+                {leave.rmApprovedAt && (
                   <div>
                     <h4 className="font-medium text-gray-900 mb-1">
                       RM {leave.status === 'APPROVED' ? 'Approved On' : 'Processed On'}
                     </h4>
                     <p className="text-gray-600">
-                      {leave.rmApprovedAt && format(new Date(leave.rmApprovedAt), 'MMM dd, yyyy at h:mm a')}
+                      {format(new Date(leave.rmApprovedAt), 'MMM dd, yyyy at h:mm a')}
                     </p>
                   </div>
                 )}

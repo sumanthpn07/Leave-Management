@@ -1,127 +1,24 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { ProtectedRoute } from '@/components/auth/protected-route';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
+import { useAdminLeaveSummary, useAdminPendingApprovals } from '@/hooks/use-leaves';
 import { Button } from '@/components/ui/button';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { TrendingUp, Users, Calendar, FileText, ChartBar as BarChart3 } from 'lucide-react';
-import { api } from '@/lib/api';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { BarChart3, Users, Calendar, Clock, TrendingUp, AlertCircle } from 'lucide-react';
+import Link from 'next/link';
+import { format } from 'date-fns';
 
-interface DepartmentStats {
-  department: string;
-  totalEmployees: number;
-  totalLeaves: number;
-  pendingLeaves: number;
-  approvedLeaves: number;
-  rejectedLeaves: number;
-  averageLeaveDays: number;
-}
+export default function AdminLeaveSummaryPage() {
+  const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
+  const [selectedPeriod, setSelectedPeriod] = useState<string>('current');
+  
+  const { data: leaveSummary, isLoading: summaryLoading, error: summaryError } = useAdminLeaveSummary();
+  const { data: pendingApprovals, isLoading: approvalsLoading } = useAdminPendingApprovals();
 
-interface LeaveSummaryData {
-  departments: DepartmentStats[];
-  totalStats: {
-    totalEmployees: number;
-    totalLeaves: number;
-    pendingLeaves: number;
-    approvedLeaves: number;
-    rejectedLeaves: number;
-  };
-}
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
-
-export default function LeaveSummaryPage() {
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
-  const [showChart, setShowChart] = useState(false);
-
-  const { data: summaryData, isLoading, error } = useQuery({
-    queryKey: ['leaveSummary', selectedYear],
-    queryFn: async (): Promise<LeaveSummaryData> => {
-      // Mock data for demo - replace with actual API call
-      const mockData: LeaveSummaryData = {
-        departments: [
-          {
-            department: 'Engineering',
-            totalEmployees: 25,
-            totalLeaves: 45,
-            pendingLeaves: 8,
-            approvedLeaves: 32,
-            rejectedLeaves: 5,
-            averageLeaveDays: 12.5,
-          },
-          {
-            department: 'Marketing',
-            totalEmployees: 12,
-            totalLeaves: 28,
-            pendingLeaves: 3,
-            approvedLeaves: 22,
-            rejectedLeaves: 3,
-            averageLeaveDays: 15.2,
-          },
-          {
-            department: 'HR',
-            totalEmployees: 8,
-            totalLeaves: 18,
-            pendingLeaves: 2,
-            approvedLeaves: 14,
-            rejectedLeaves: 2,
-            averageLeaveDays: 11.8,
-          },
-          {
-            department: 'Finance',
-            totalEmployees: 10,
-            totalLeaves: 22,
-            pendingLeaves: 4,
-            approvedLeaves: 16,
-            rejectedLeaves: 2,
-            averageLeaveDays: 13.1,
-          },
-          {
-            department: 'Design',
-            totalEmployees: 6,
-            totalLeaves: 15,
-            pendingLeaves: 1,
-            approvedLeaves: 12,
-            rejectedLeaves: 2,
-            averageLeaveDays: 14.3,
-          },
-        ],
-        totalStats: {
-          totalEmployees: 61,
-          totalLeaves: 128,
-          pendingLeaves: 18,
-          approvedLeaves: 96,
-          rejectedLeaves: 14,
-        },
-      };
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 800));
-      return mockData;
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-
-  const chartData = summaryData?.departments.map(dept => ({
-    name: dept.department,
-    totalLeaves: dept.totalLeaves,
-    pendingLeaves: dept.pendingLeaves,
-    approvedLeaves: dept.approvedLeaves,
-    rejectedLeaves: dept.rejectedLeaves,
-  })) || [];
-
-  const pieData = summaryData?.departments.map((dept, index) => ({
-    name: dept.department,
-    value: dept.totalLeaves,
-    color: COLORS[index % COLORS.length],
-  })) || [];
-
-  if (error) {
+  if (summaryError) {
     return (
       <ProtectedRoute requiredRole="ADMIN">
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -142,202 +39,227 @@ export default function LeaveSummaryPage() {
     <ProtectedRoute requiredRole="ADMIN">
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex justify-between items-start mb-8">
+          <div className="mb-8">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Leave Summary Report</h1>
+            <p className="text-gray-600">
+              Comprehensive leave statistics and department-wise analysis
+            </p>
+          </div>
+
+          {/* Filters */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Leave Summary</h1>
-              <p className="text-gray-600">
-                Department-wise leave statistics and analytics
-              </p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger className="w-32">
-                  <SelectValue />
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Department
+              </label>
+              <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select department" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="2024">2024</SelectItem>
-                  <SelectItem value="2023">2023</SelectItem>
-                  <SelectItem value="2022">2022</SelectItem>
+                  <SelectItem value="all">All Departments</SelectItem>
+                  <SelectItem value="engineering">Engineering</SelectItem>
+                  <SelectItem value="hr">Human Resources</SelectItem>
+                  <SelectItem value="finance">Finance</SelectItem>
+                  <SelectItem value="marketing">Marketing</SelectItem>
                 </SelectContent>
               </Select>
-              <Button
-                variant="outline"
-                onClick={() => setShowChart(!showChart)}
-                className="flex items-center"
-              >
-                <BarChart3 className="h-4 w-4 mr-2" />
-                {showChart ? 'Hide Charts' : 'Show Charts'}
-              </Button>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Time Period
+              </label>
+              <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select period" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="current">Current Month</SelectItem>
+                  <SelectItem value="quarter">This Quarter</SelectItem>
+                  <SelectItem value="year">This Year</SelectItem>
+                  <SelectItem value="custom">Custom Range</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
           {/* Summary Cards */}
-          {summaryData && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{summaryData.totalStats.totalEmployees}</div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Leaves</CardTitle>
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{summaryData.totalStats.totalLeaves}</div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Pending Approvals</CardTitle>
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-yellow-600">{summaryData.totalStats.pendingLeaves}</div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Approval Rate</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-green-600">
-                    {Math.round((summaryData.totalStats.approvedLeaves / summaryData.totalStats.totalLeaves) * 100)}%
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <Users className="h-8 w-8 text-blue-600" />
                   </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Total Employees</p>
+                    <p className="text-2xl font-semibold text-gray-900">
+                      {summaryLoading ? '...' : leaveSummary?.totalEmployees || 0}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-          {/* Charts */}
-          {showChart && summaryData && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Leave Distribution by Department</CardTitle>
-                  <CardDescription>Total leaves across departments</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="approvedLeaves" fill="#10B981" name="Approved" />
-                      <Bar dataKey="pendingLeaves" fill="#F59E0B" name="Pending" />
-                      <Bar dataKey="rejectedLeaves" fill="#EF4444" name="Rejected" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <Calendar className="h-8 w-8 text-green-600" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Active Leaves</p>
+                    <p className="text-2xl font-semibold text-gray-900">
+                      {summaryLoading ? '...' : leaveSummary?.activeLeaves || 0}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Department Leave Share</CardTitle>
-                  <CardDescription>Percentage of total leaves by department</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={pieData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {pieData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </div>
-          )}
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <Clock className="h-8 w-8 text-yellow-600" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Pending Approvals</p>
+                    <p className="text-2xl font-semibold text-gray-900">
+                      {approvalsLoading ? '...' : pendingApprovals?.length || 0}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-          {/* Department Statistics Table */}
-          <Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <TrendingUp className="h-8 w-8 text-purple-600" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Approval Rate</p>
+                    <p className="text-2xl font-semibold text-gray-900">
+                      {summaryLoading ? '...' : `${leaveSummary?.approvalRate || 0}%`}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Department-wise Breakdown */}
+          <Card className="mb-8">
             <CardHeader>
-              <CardTitle>Department Statistics</CardTitle>
+              <CardTitle className="flex items-center">
+                <BarChart3 className="h-5 w-5 mr-2" />
+                Department-wise Leave Statistics
+              </CardTitle>
               <CardDescription>
-                Detailed leave statistics by department for {selectedYear}
+                Leave usage and patterns across different departments
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {isLoading ? (
+              {summaryLoading ? (
                 <div className="space-y-4">
-                  {Array.from({ length: 5 }).map((_, i) => (
+                  {[...Array(3)].map((_, i) => (
                     <div key={i} className="animate-pulse">
-                      <div className="h-12 bg-gray-200 rounded"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/4 mb-2"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : leaveSummary?.departments && leaveSummary.departments.length > 0 ? (
+                <div className="space-y-4">
+                  {leaveSummary.departments.map((dept: any) => (
+                    <div key={dept.name} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-lg font-semibold text-gray-900">{dept.name}</h3>
+                        <Badge variant="outline">{dept.employeeCount} employees</Badge>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="text-center">
+                          <p className="text-2xl font-bold text-blue-600">{dept.totalLeaves}</p>
+                          <p className="text-sm text-gray-600">Total Leaves</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-2xl font-bold text-green-600">{dept.approvedLeaves}</p>
+                          <p className="text-sm text-gray-600">Approved</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-2xl font-bold text-yellow-600">{dept.pendingLeaves}</p>
+                          <p className="text-sm text-gray-600">Pending</p>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Department</TableHead>
-                        <TableHead className="text-center">Employees</TableHead>
-                        <TableHead className="text-center">Total Leaves</TableHead>
-                        <TableHead className="text-center">Pending</TableHead>
-                        <TableHead className="text-center">Approved</TableHead>
-                        <TableHead className="text-center">Rejected</TableHead>
-                        <TableHead className="text-center">Avg Days/Employee</TableHead>
-                        <TableHead className="text-center">Approval Rate</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {summaryData?.departments.map((dept) => {
-                        const approvalRate = Math.round((dept.approvedLeaves / dept.totalLeaves) * 100);
-                        
-                        return (
-                          <TableRow key={dept.department}>
-                            <TableCell className="font-medium">{dept.department}</TableCell>
-                            <TableCell className="text-center">{dept.totalEmployees}</TableCell>
-                            <TableCell className="text-center">{dept.totalLeaves}</TableCell>
-                            <TableCell className="text-center">
-                              <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-                                {dept.pendingLeaves}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                                {dept.approvedLeaves}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                                {dept.rejectedLeaves}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-center">{dept.averageLeaveDays}</TableCell>
-                            <TableCell className="text-center">
-                              <span className={`font-medium ${approvalRate >= 80 ? 'text-green-600' : approvalRate >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
-                                {approvalRate}%
-                              </span>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
+                <div className="text-center py-8">
+                  <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Data Available</h3>
+                  <p className="text-gray-600">No leave data found for the selected criteria.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Recent Activity */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Clock className="h-5 w-5 mr-2" />
+                Recent Leave Activity
+              </CardTitle>
+              <CardDescription>
+                Latest leave requests and approvals across the organization
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {approvalsLoading ? (
+                <div className="space-y-3">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="animate-pulse flex items-center space-x-3">
+                      <div className="h-8 w-8 bg-gray-200 rounded-full"></div>
+                      <div className="flex-1">
+                        <div className="h-4 bg-gray-200 rounded w-1/3 mb-1"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : pendingApprovals && pendingApprovals.length > 0 ? (
+                <div className="space-y-3">
+                  {pendingApprovals.slice(0, 5).map((leave: any) => (
+                    <div key={leave.id} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg">
+                      <div className="flex-shrink-0">
+                        <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <Calendar className="h-4 w-4 text-blue-600" />
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900">
+                          {leave.user?.name || 'Unknown User'}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {leave.leaveType?.name || 'Unknown'} • {leave.totalDays} days
+                        </p>
+                      </div>
+                      <div className="flex-shrink-0">
+                        <Badge variant="outline" className="text-xs">
+                          {format(new Date(leave.appliedAt), 'MMM dd')}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Recent Activity</h3>
+                  <p className="text-gray-600">No recent leave requests found.</p>
                 </div>
               )}
             </CardContent>

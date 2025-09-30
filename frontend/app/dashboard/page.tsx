@@ -21,6 +21,29 @@ export default function DashboardPage() {
     new Date(leave.startDate) > new Date()
   ).slice(0, 3) || [];
 
+  // Calculate stats from real data
+  const pendingRequests = myLeaves?.filter(leave => 
+    leave.status === 'PENDING_RM' || leave.status === 'PENDING_HR'
+  ).length || 0;
+
+  // Available Days = Annual + Personal leave remaining
+  const availableDays = leaveBalances?.reduce((total, balance) => {
+    const leaveType = balance.leaveType?.name?.toLowerCase() || balance.leaveTypeId?.toLowerCase() || '';
+    if (leaveType.includes('annual') || leaveType.includes('personal')) {
+      return total + balance.remainingDays;
+    }
+    return total;
+  }, 0) || 0;
+
+  const totalUsedDays = leaveBalances?.reduce((total, balance) => 
+    total + balance.usedDays, 0
+  ) || 0;
+
+  // Get 3 most recent leave requests sorted by appliedAt date
+  const recentLeaves = myLeaves
+    ?.sort((a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime())
+    ?.slice(0, 3) || [];
+
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-50">
@@ -37,7 +60,7 @@ export default function DashboardPage() {
                 <div className="flex items-center space-x-2">
                   <User className="h-5 w-5 text-gray-500" />
                   <span className="text-sm text-gray-700">
-                    {user?.firstName} {user?.lastName}
+                    {user?.name}
                   </span>
                   <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
                     {user?.role}
@@ -57,7 +80,7 @@ export default function DashboardPage() {
           <div className="flex justify-between items-start mb-8">
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                Welcome back, {user?.firstName}!
+                Welcome back, {user?.name?.split(' ')?.[0] || 'User'}!
               </h2>
               <p className="text-gray-600">
                 Manage your leave requests and view your leave balance.
@@ -150,7 +173,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {user?.role === 'MANAGER' ? '5' : user?.role === 'ADMIN' ? '12' : '2'}
+                  {leavesLoading ? '...' : pendingRequests}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {user?.role === 'EMPLOYEE' ? 'Awaiting approval' : 'Require your approval'}
@@ -167,10 +190,10 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {user?.role === 'MANAGER' ? '22' : user?.role === 'ADMIN' ? '25' : '18'}
+                  {balancesLoading ? '...' : availableDays}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Days remaining this year
+                  Annual + Personal leave remaining
                 </p>
               </CardContent>
             </Card>
@@ -184,7 +207,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {user?.role === 'MANAGER' ? '3' : user?.role === 'ADMIN' ? '0' : '7'}
+                  {balancesLoading ? '...' : totalUsedDays}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Days taken so far
@@ -261,37 +284,64 @@ export default function DashboardPage() {
                       </div>
                     ))}
                   </div>
-                ) : (
+                ) : recentLeaves.length > 0 ? (
                   <div className="space-y-3">
-                    {myLeaves?.slice(0, 3).map((leave) => {
+                    {recentLeaves.map((leave) => {
                       const getStatusColor = (status: string) => {
                         switch (status) {
                           case 'APPROVED': return 'bg-green-100 text-green-800';
                           case 'REJECTED': return 'bg-red-100 text-red-800';
                           case 'PENDING_RM': return 'bg-yellow-100 text-yellow-800';
                           case 'PENDING_HR': return 'bg-orange-100 text-orange-800';
+                          case 'CANCELLED': return 'bg-gray-100 text-gray-800';
                           default: return 'bg-gray-100 text-gray-800';
                         }
                       };
 
+                      const getStatusIcon = (status: string) => {
+                        switch (status) {
+                          case 'APPROVED': return <Calendar className="h-3 w-3 text-green-600" />;
+                          case 'REJECTED': return <Clock className="h-3 w-3 text-red-600" />;
+                          case 'PENDING_RM': return <Clock className="h-3 w-3 text-yellow-600" />;
+                          case 'PENDING_HR': return <Clock className="h-3 w-3 text-orange-600" />;
+                          case 'CANCELLED': return <Clock className="h-3 w-3 text-gray-600" />;
+                          default: return <Clock className="h-3 w-3 text-gray-600" />;
+                        }
+                      };
+
                       return (
-                        <Link key={leave.id} href={`/leaves/${leave.id}`} className="flex items-center justify-between hover:bg-gray-50 p-2 rounded-lg transition-colors cursor-pointer">
-                          <div>
-                            <p className="text-sm font-medium">{leave.leaveType?.name}</p>
-                            <p className="text-xs text-gray-500">
+                        <Link key={leave.id} href={`/leaves/${leave.id}`} className="flex items-center justify-between hover:bg-gray-50 p-3 rounded-lg transition-colors cursor-pointer border border-gray-100">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2 mb-1">
+                              {getStatusIcon(leave.status)}
+                              <p className="text-sm font-medium text-gray-900">{leave.leaveType?.name}</p>
+                            </div>
+                            <p className="text-xs text-gray-500 mb-1">
                               {format(new Date(leave.startDate), 'MMM dd')} - {format(new Date(leave.endDate), 'MMM dd, yyyy')}
                             </p>
+                            <p className="text-xs text-gray-400">
+                              Applied: {format(new Date(leave.appliedAt), 'MMM dd, yyyy')}
+                            </p>
                           </div>
-                          <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(leave.status)}`}>
-                            {getStatusDisplayName(leave.status)}
-                          </span>
+                          <div className="flex flex-col items-end space-y-1">
+                            <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(leave.status)}`}>
+                              {getStatusDisplayName(leave.status)}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {leave.totalDays} day{leave.totalDays > 1 ? 's' : ''}
+                            </span>
+                          </div>
                         </Link>
                       );
-                    }) || (
-                      <div className="text-center py-4">
-                        <p className="text-sm text-gray-500">No recent activity</p>
-                      </div>
-                    )}
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <Clock className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-500">No recent activity</p>
+                    <Button asChild variant="outline" size="sm" className="mt-2">
+                      <Link href="/leaves/new">Apply for leave</Link>
+                    </Button>
                   </div>
                 )}
               </CardContent>
@@ -315,7 +365,7 @@ export default function DashboardPage() {
                       View All Leaves
                     </Link>
                   </Button>
-                  {(user?.role === 'MANAGER' || user?.role === 'ADMIN') && (
+                  {(user?.role === 'MANAGER' || user?.role === 'HR_MANAGER' || user?.role === 'REPORTING_MANAGER' || user?.role === 'ADMIN') && (
                     <Button variant="outline" className="justify-start" asChild>
                       <Link href="/approvals">
                         <User className="h-4 w-4 mr-2" />
