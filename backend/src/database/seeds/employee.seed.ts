@@ -1,71 +1,124 @@
 import { DataSource } from 'typeorm';
-import * as bcrypt from 'bcryptjs';
 import { Employee } from '../../employees/entities/employee.entity';
 import { UserRole } from '../../common/enums/user-role.enum';
+import * as bcrypt from 'bcrypt';
 
 export async function seedEmployees(dataSource: DataSource) {
   const employeeRepository = dataSource.getRepository(Employee);
-  
-  // Check if employees already exist
-  const existingEmployees = await employeeRepository.count();
-  if (existingEmployees > 0) {
-    console.log('Employees already seeded');
-    return;
-  }
 
-  const hashedPassword = await bcrypt.hash('password123', 10);
+  // Clear existing employees - this is already done in clear-and-seed.ts
+  // await employeeRepository.delete({});
 
-  // Create employees without relationships first
   const employeesData = [
     {
       employeeCode: 'EMP001',
-      name: 'John Doe',
-      email: 'john.doe@company.com',
+      name: 'Priya Sharma',
+      email: 'priya.sharma@company.com',
       department: 'Engineering',
       role: UserRole.EMPLOYEE,
       joinDate: new Date('2023-01-15'),
       isActive: true,
-      password: hashedPassword,
+      password: await bcrypt.hash('password123', 10),
     },
     {
       employeeCode: 'EMP002',
-      name: 'Jane Smith',
-      email: 'jane.smith@company.com',
+      name: 'Rajesh Kumar',
+      email: 'rajesh.kumar@company.com',
       department: 'Engineering',
       role: UserRole.REPORTING_MANAGER,
       joinDate: new Date('2022-06-01'),
       isActive: true,
-      password: hashedPassword,
+      password: await bcrypt.hash('password123', 10),
     },
     {
       employeeCode: 'EMP003',
-      name: 'Mike Wilson',
-      email: 'mike.wilson@company.com',
+      name: 'Anita Patel',
+      email: 'anita.patel@company.com',
       department: 'HR',
       role: UserRole.HR_MANAGER,
       joinDate: new Date('2021-03-10'),
       isActive: true,
-      password: hashedPassword,
+      password: await bcrypt.hash('password123', 10),
     },
     {
       employeeCode: 'EMP004',
-      name: 'Sarah Jones',
-      email: 'sarah.jones@company.com',
+      name: 'Vikram Singh',
+      email: 'vikram.singh@company.com',
       department: 'Marketing',
       role: UserRole.EMPLOYEE,
       joinDate: new Date('2023-08-20'),
       isActive: true,
-      password: hashedPassword,
+      password: await bcrypt.hash('password123', 10),
     },
     {
       employeeCode: 'EMP005',
-      name: 'Admin User',
-      email: 'admin@company.com',
+      name: 'Suresh Gupta',
+      email: 'suresh.gupta@company.com',
       department: 'IT',
+      role: UserRole.EMPLOYEE,
+      joinDate: new Date('2023-11-01'),
+      isActive: true,
+      password: await bcrypt.hash('password123', 10),
+    },
+    {
+      employeeCode: 'EMP006',
+      name: 'Meera Reddy',
+      email: 'meera.reddy@company.com',
+      department: 'Finance',
+      role: UserRole.EMPLOYEE,
+      joinDate: new Date('2024-02-15'),
+      isActive: true,
+      password: await bcrypt.hash('password123', 10),
+    },
+    {
+      employeeCode: 'EMP007',
+      name: 'Arjun Verma',
+      email: 'arjun.verma@company.com',
+      department: 'Engineering',
+      role: UserRole.EMPLOYEE,
+      joinDate: new Date('2023-09-10'),
+      isActive: true,
+      password: await bcrypt.hash('password123', 10),
+    },
+    {
+      employeeCode: 'EMP008',
+      name: 'Kavya Nair',
+      email: 'kavya.nair@company.com',
+      department: 'HR',
+      role: UserRole.EMPLOYEE,
+      joinDate: new Date('2024-01-05'),
+      isActive: true,
+      password: await bcrypt.hash('password123', 10),
+    },
+    {
+      employeeCode: 'EMP009',
+      name: 'Rohit Agarwal',
+      email: 'rohit.agarwal@company.com',
+      department: 'Marketing',
+      role: UserRole.REPORTING_MANAGER,
+      joinDate: new Date('2022-04-12'),
+      isActive: true,
+      password: await bcrypt.hash('password123', 10),
+    },
+    {
+      employeeCode: 'EMP010',
+      name: 'Deepika Joshi',
+      email: 'deepika.joshi@company.com',
+      department: 'IT',
+      role: UserRole.EMPLOYEE,
+      joinDate: new Date('2023-12-01'),
+      isActive: true,
+      password: await bcrypt.hash('password123', 10),
+    },
+    {
+      employeeCode: 'ADMIN001',
+      name: 'Amit Kumar',
+      email: 'admin@company.com',
+      department: 'Administration',
       role: UserRole.ADMIN,
       joinDate: new Date('2020-01-01'),
       isActive: true,
-      password: hashedPassword,
+      password: await bcrypt.hash('password123', 10),
     },
   ];
 
@@ -79,21 +132,44 @@ export async function seedEmployees(dataSource: DataSource) {
   }
 
   // Now update reporting manager relationships
-  const john = createdEmployees.find(emp => emp.employeeCode === 'EMP001');
-  const sarah = createdEmployees.find(emp => emp.employeeCode === 'EMP004');
-  const jane = createdEmployees.find(emp => emp.employeeCode === 'EMP002');
+  const priya = createdEmployees.find(emp => emp.employeeCode === 'EMP001');
+  const rajesh = createdEmployees.find(emp => emp.employeeCode === 'EMP002');
+  const anita = createdEmployees.find(emp => emp.employeeCode === 'EMP003');
+  const vikram = createdEmployees.find(emp => emp.employeeCode === 'EMP004');
+  const suresh = createdEmployees.find(emp => emp.employeeCode === 'EMP005');
+  const arjun = createdEmployees.find(emp => emp.employeeCode === 'EMP007');
+  const kavya = createdEmployees.find(emp => emp.employeeCode === 'EMP008');
+  const rohit = createdEmployees.find(emp => emp.employeeCode === 'EMP009');
+  const deepika = createdEmployees.find(emp => emp.employeeCode === 'EMP010');
   
-  // Both John and Sarah report to Jane Smith (REPORTING_MANAGER)
-  if (john && jane) {
-    john.reportingManagerId = jane.id;
-    await employeeRepository.save(john);
-    console.log(`Updated ${john.name} to report to ${jane.name}`);
+  if (priya && rajesh) {
+    priya.reportingManagerId = rajesh.id;
+    await employeeRepository.save(priya);
+    console.log(`Updated ${priya.name} to report to ${rajesh.name}`);
   }
-  
-  if (sarah && jane) {
-    sarah.reportingManagerId = jane.id;
-    await employeeRepository.save(sarah);
-    console.log(`Updated ${sarah.name} to report to ${jane.name}`);
+
+  if (arjun && rajesh) {
+    arjun.reportingManagerId = rajesh.id;
+    await employeeRepository.save(arjun);
+    console.log(`Updated ${arjun.name} to report to ${rajesh.name}`);
+  }
+
+  if (vikram && rohit) {
+    vikram.reportingManagerId = rohit.id;
+    await employeeRepository.save(vikram);
+    console.log(`Updated ${vikram.name} to report to ${rohit.name}`);
+  }
+
+  if (kavya && anita) {
+    kavya.reportingManagerId = anita.id;
+    await employeeRepository.save(kavya);
+    console.log(`Updated ${kavya.name} to report to ${anita.name}`);
+  }
+
+  if (deepika && suresh) {
+    deepika.reportingManagerId = suresh.id;
+    await employeeRepository.save(deepika);
+    console.log(`Updated ${deepika.name} to report to ${suresh.name}`);
   }
 
   console.log('All employees seeded successfully');

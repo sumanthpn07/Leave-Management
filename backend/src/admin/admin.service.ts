@@ -18,23 +18,31 @@ export class AdminService {
     const employees = await this.empRepo.find({ where: { isActive: true } });
     const leaves = await this.leaveRepo.find();
     
-    const departments = await this.empRepo
-      .createQueryBuilder('emp')
-      .select('emp.department')
-      .addSelect('COUNT(DISTINCT emp.id)', 'totalEmployees')
-      .addSelect('COUNT(lr.id)', 'totalLeaves')
-      .addSelect('COUNT(CASE WHEN lr.status IN (:...pending) THEN 1 END)', 'pendingApprovals')
-      .addSelect('COUNT(CASE WHEN lr.status = :approved THEN 1 END)', 'approvedLeaves')
-      .addSelect('COUNT(CASE WHEN lr.status = :rejected THEN 1 END)', 'rejectedLeaves')
-      .leftJoin('leave_requests', 'lr', 'lr.employeeId = emp.id')
-      .where('emp.isActive = true')
-      .groupBy('emp.department')
-      .setParameters({
-        pending: [LeaveStatus.PENDING_RM, LeaveStatus.PENDING_HR],
-        approved: LeaveStatus.APPROVED,
-        rejected: LeaveStatus.REJECTED,
-      })
-      .getRawMany();
+    // Use raw SQL query to get proper field names
+    const departments = await this.empRepo.query(`
+      SELECT 
+        emp.department,
+        COUNT(DISTINCT emp.id) as "totalEmployees",
+        COUNT(lr.id) as "totalLeaves",
+        COUNT(CASE WHEN lr.status IN ('PENDING_RM', 'PENDING_HR') THEN 1 END) as "pendingApprovals",
+        COUNT(CASE WHEN lr.status = 'APPROVED' THEN 1 END) as "approvedLeaves",
+        COUNT(CASE WHEN lr.status = 'REJECTED' THEN 1 END) as "rejectedLeaves"
+      FROM employees emp
+      LEFT JOIN leave_requests lr ON lr."employeeId" = emp.id
+      WHERE emp."isActive" = true
+      GROUP BY emp.department
+      ORDER BY emp.department
+    `);
+
+    // Convert to proper format
+    const departmentStats = departments.map(dept => ({
+      department: dept.department || 'Unknown',
+      totalEmployees: parseInt(dept.totalEmployees) || 0,
+      totalLeaves: parseInt(dept.totalLeaves) || 0,
+      pendingApprovals: parseInt(dept.pendingApprovals) || 0,
+      approvedLeaves: parseInt(dept.approvedLeaves) || 0,
+      rejectedLeaves: parseInt(dept.rejectedLeaves) || 0,
+    }));
 
     const summary = {
       totalEmployees: employees.length,
@@ -44,7 +52,7 @@ export class AdminService {
       rejectedLeaves: leaves.filter(l => l.status === LeaveStatus.REJECTED).length,
     };
 
-    return { success: true, data: { departments, summary } };
+    return { success: true, data: { departments: departmentStats, summary } };
   }
 
   async getPendingApprovals() {

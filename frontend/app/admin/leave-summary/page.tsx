@@ -16,18 +16,17 @@ interface DepartmentStats {
   department: string;
   totalEmployees: number;
   totalLeaves: number;
-  pendingLeaves: number;
+  pendingApprovals: number;
   approvedLeaves: number;
   rejectedLeaves: number;
-  averageLeaveDays: number;
 }
 
 interface LeaveSummaryData {
   departments: DepartmentStats[];
-  totalStats: {
+  summary: {
     totalEmployees: number;
     totalLeaves: number;
-    pendingLeaves: number;
+    pendingApprovals: number;
     approvedLeaves: number;
     rejectedLeaves: number;
   };
@@ -36,73 +35,15 @@ interface LeaveSummaryData {
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
 export default function LeaveSummaryPage() {
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(currentYear.toString());
   const [showChart, setShowChart] = useState(false);
 
   const { data: summaryData, isLoading, error } = useQuery({
     queryKey: ['leaveSummary', selectedYear],
     queryFn: async (): Promise<LeaveSummaryData> => {
-      // Mock data for demo - replace with actual API call
-      const mockData: LeaveSummaryData = {
-        departments: [
-          {
-            department: 'Engineering',
-            totalEmployees: 25,
-            totalLeaves: 45,
-            pendingLeaves: 8,
-            approvedLeaves: 32,
-            rejectedLeaves: 5,
-            averageLeaveDays: 12.5,
-          },
-          {
-            department: 'Marketing',
-            totalEmployees: 12,
-            totalLeaves: 28,
-            pendingLeaves: 3,
-            approvedLeaves: 22,
-            rejectedLeaves: 3,
-            averageLeaveDays: 15.2,
-          },
-          {
-            department: 'HR',
-            totalEmployees: 8,
-            totalLeaves: 18,
-            pendingLeaves: 2,
-            approvedLeaves: 14,
-            rejectedLeaves: 2,
-            averageLeaveDays: 11.8,
-          },
-          {
-            department: 'Finance',
-            totalEmployees: 10,
-            totalLeaves: 22,
-            pendingLeaves: 4,
-            approvedLeaves: 16,
-            rejectedLeaves: 2,
-            averageLeaveDays: 13.1,
-          },
-          {
-            department: 'Design',
-            totalEmployees: 6,
-            totalLeaves: 15,
-            pendingLeaves: 1,
-            approvedLeaves: 12,
-            rejectedLeaves: 2,
-            averageLeaveDays: 14.3,
-          },
-        ],
-        totalStats: {
-          totalEmployees: 61,
-          totalLeaves: 128,
-          pendingLeaves: 18,
-          approvedLeaves: 96,
-          rejectedLeaves: 14,
-        },
-      };
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 800));
-      return mockData;
+      const response = await api.get('/admin/leave-summary');
+      return response.data.data;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -110,16 +51,18 @@ export default function LeaveSummaryPage() {
   const chartData = summaryData?.departments.map(dept => ({
     name: dept.department,
     totalLeaves: dept.totalLeaves,
-    pendingLeaves: dept.pendingLeaves,
+    pendingLeaves: dept.pendingApprovals,
     approvedLeaves: dept.approvedLeaves,
     rejectedLeaves: dept.rejectedLeaves,
   })) || [];
 
-  const pieData = summaryData?.departments.map((dept, index) => ({
-    name: dept.department,
-    value: dept.totalLeaves,
-    color: COLORS[index % COLORS.length],
-  })) || [];
+  const pieData = summaryData?.departments
+    .filter(dept => dept.totalLeaves > 0) // Filter out departments with no leaves
+    .map((dept, index) => ({
+      name: dept.department,
+      value: dept.totalLeaves,
+      color: COLORS[index % COLORS.length],
+    })) || [];
 
   if (error) {
     return (
@@ -155,6 +98,7 @@ export default function LeaveSummaryPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="2025">2025</SelectItem>
                   <SelectItem value="2024">2024</SelectItem>
                   <SelectItem value="2023">2023</SelectItem>
                   <SelectItem value="2022">2022</SelectItem>
@@ -180,7 +124,7 @@ export default function LeaveSummaryPage() {
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{summaryData.totalStats.totalEmployees}</div>
+                  <div className="text-2xl font-bold">{summaryData.summary.totalEmployees}</div>
                 </CardContent>
               </Card>
 
@@ -190,7 +134,7 @@ export default function LeaveSummaryPage() {
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{summaryData.totalStats.totalLeaves}</div>
+                  <div className="text-2xl font-bold">{summaryData.summary.totalLeaves}</div>
                 </CardContent>
               </Card>
 
@@ -200,7 +144,7 @@ export default function LeaveSummaryPage() {
                   <FileText className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-yellow-600">{summaryData.totalStats.pendingLeaves}</div>
+                  <div className="text-2xl font-bold text-yellow-600">{summaryData.summary.pendingApprovals}</div>
                 </CardContent>
               </Card>
 
@@ -211,7 +155,9 @@ export default function LeaveSummaryPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-green-600">
-                    {Math.round((summaryData.totalStats.approvedLeaves / summaryData.totalStats.totalLeaves) * 100)}%
+                    {summaryData.summary.totalLeaves > 0 
+                      ? Math.round((summaryData.summary.approvedLeaves / summaryData.summary.totalLeaves) * 100)
+                      : 0}%
                   </div>
                 </CardContent>
               </Card>
@@ -247,25 +193,31 @@ export default function LeaveSummaryPage() {
                   <CardDescription>Percentage of total leaves by department</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={pieData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {pieData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  {pieData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={pieData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {pieData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-[300px] text-gray-500">
+                      No leave data available for visualization
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -299,43 +251,51 @@ export default function LeaveSummaryPage() {
                         <TableHead className="text-center">Pending</TableHead>
                         <TableHead className="text-center">Approved</TableHead>
                         <TableHead className="text-center">Rejected</TableHead>
-                        <TableHead className="text-center">Avg Days/Employee</TableHead>
                         <TableHead className="text-center">Approval Rate</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {summaryData?.departments.map((dept) => {
-                        const approvalRate = Math.round((dept.approvedLeaves / dept.totalLeaves) * 100);
-                        
-                        return (
-                          <TableRow key={dept.department}>
-                            <TableCell className="font-medium">{dept.department}</TableCell>
-                            <TableCell className="text-center">{dept.totalEmployees}</TableCell>
-                            <TableCell className="text-center">{dept.totalLeaves}</TableCell>
-                            <TableCell className="text-center">
-                              <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-                                {dept.pendingLeaves}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                                {dept.approvedLeaves}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                                {dept.rejectedLeaves}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-center">{dept.averageLeaveDays}</TableCell>
-                            <TableCell className="text-center">
-                              <span className={`font-medium ${approvalRate >= 80 ? 'text-green-600' : approvalRate >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
-                                {approvalRate}%
-                              </span>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
+                      {summaryData?.departments.length > 0 ? (
+                        summaryData.departments.map((dept) => {
+                          const approvalRate = dept.totalLeaves > 0 
+                            ? Math.round((dept.approvedLeaves / dept.totalLeaves) * 100)
+                            : 0;
+                          
+                          return (
+                            <TableRow key={dept.department}>
+                              <TableCell className="font-medium">{dept.department}</TableCell>
+                              <TableCell className="text-center">{dept.totalEmployees}</TableCell>
+                              <TableCell className="text-center">{dept.totalLeaves}</TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                                  {dept.pendingApprovals}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                  {dept.approvedLeaves}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                                  {dept.rejectedLeaves}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <span className={`font-medium ${approvalRate >= 80 ? 'text-green-600' : approvalRate >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
+                                  {approvalRate}%
+                                </span>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center text-gray-500 py-8">
+                            No department data available
+                          </TableCell>
+                        </TableRow>
+                      )}
                     </TableBody>
                   </Table>
                 </div>

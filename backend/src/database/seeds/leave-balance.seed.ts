@@ -8,8 +8,7 @@ export async function seedLeaveBalances(dataSource: DataSource) {
   const empRepo = dataSource.getRepository(Employee);
 
   const employees = await empRepo.find({ where: { isActive: true } });
-  const currentYear = new Date().getFullYear();
-  const years = [currentYear - 1, currentYear]; // Create balances for both 2024 and 2025
+  const currentYear = new Date().getFullYear(); // 2025
 
   for (const emp of employees) {
     const presets: { leaveType: LeaveType; allocated: number }[] = [
@@ -18,21 +17,22 @@ export async function seedLeaveBalances(dataSource: DataSource) {
       { leaveType: LeaveType.PERSONAL, allocated: 18 },
     ];
 
-    for (const year of years) {
-      for (const p of presets) {
-        const exists = await balRepo.findOne({ where: { employeeId: emp.id, year, leaveType: p.leaveType } });
-        if (exists) continue;
-        const row = balRepo.create({
-          employeeId: emp.id,
-          leaveType: p.leaveType,
-          year,
-          allocated: p.allocated,
-          used: 0,
-          remaining: p.allocated,
-          carryForward: 0,
-        });
-        await balRepo.save(row);
-      }
+    for (const p of presets) {
+      const exists = await balRepo.findOne({ where: { employeeId: emp.id, year: currentYear, leaveType: p.leaveType } });
+      if (exists) continue;
+      
+      const row = balRepo.create({
+        employeeId: emp.id,
+        leaveType: p.leaveType,
+        year: currentYear,
+        allocated: p.allocated,
+        used: 0,
+        remaining: p.allocated,
+        carryForward: 0,
+      });
+      await balRepo.save(row);
     }
   }
+
+  console.log(`Leave balances created for ${currentYear} for ${employees.length} employees`);
 }
