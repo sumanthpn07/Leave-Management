@@ -10,13 +10,19 @@ export const api = axios.create({
   },
 });
 
-// Request interceptor for adding auth token
+// Request interceptor for adding auth token and handling FormData
 api.interceptors.request.use(
   (config) => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // If data is FormData, remove Content-Type to let browser set it with boundary
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+    }
+    
     return config;
   },
   (error) => {
@@ -51,7 +57,9 @@ export const leaveApi = {
   getMyLeaves: () => api.get('/leaves'),
   
   // Apply for new leave
-  applyLeave: (data: any) => api.post('/leaves', data),
+  applyLeave: (data: any) => api.post('/leaves', data, {
+    headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {}
+  }),
   
   // Get pending approvals (for managers)
   getPendingApprovals: () => api.get('/approvals/pending'),
@@ -73,7 +81,9 @@ export const leaveApi = {
   cancelLeave: (id: string) => api.delete(`/leaves/${id}`),
   
   // Update leave request
-  updateLeave: (id: string, data: any) => api.put(`/leaves/${id}`, data),
+  updateLeave: (id: string, data: any) => api.put(`/leaves/${id}`, data, {
+    headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {}
+  }),
   
   // Get approval history
   getApprovalHistory: (id: string) => api.get(`/leaves/${id}/approval-history`),

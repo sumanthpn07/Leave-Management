@@ -41,4 +41,13 @@ export class CreateLeaveDto {
   @IsOptional()
   @IsString({ message: 'Documents must be a string' })
   documents?: string;
+
+  @ApiProperty({
+    description: 'Uploaded file (multipart/form-data)',
+    type: 'string',
+    format: 'binary',
+    required: false
+  })
+  @IsOptional()
+  file?: any; // This will be handled by multer, not validation
 }

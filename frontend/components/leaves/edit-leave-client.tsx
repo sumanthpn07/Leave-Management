@@ -19,7 +19,7 @@ import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const editLeaveSchema = z.object({
-  leaveTypeId: z.string().min(1, 'Please select a leave type'),
+  leaveType: z.string().min(1, 'Please select a leave type'),
   startDate: z.string().min(1, 'Start date is required'),
   endDate: z.string().min(1, 'End date is required'),
   reason: z.string().min(10, 'Please provide a detailed reason (minimum 10 characters)'),
@@ -72,7 +72,7 @@ export function EditLeaveClient({ leaveId }: EditLeaveClientProps) {
   useEffect(() => {
     if (leave) {
       reset({
-        leaveTypeId: leave.leaveTypeId,
+        leaveType: leave.leaveTypeId,
         startDate: leave.startDate,
         endDate: leave.endDate,
         reason: leave.reason,
@@ -83,7 +83,7 @@ export function EditLeaveClient({ leaveId }: EditLeaveClientProps) {
   const watchedValues = watch();
   const startDate = watchedValues.startDate;
   const endDate = watchedValues.endDate;
-  const leaveTypeId = watchedValues.leaveTypeId;
+  const leaveType = watchedValues.leaveType;
 
   // Calculate total days (business days only)
   const calculateTotalDays = (start: string, end: string): number => {
@@ -110,13 +110,13 @@ export function EditLeaveClient({ leaveId }: EditLeaveClientProps) {
   const totalDays = calculateTotalDays(startDate, endDate);
   
   // Check if medical certificate is required
-  const selectedLeaveType = leaveTypes?.find(type => type.id === leaveTypeId);
+  const selectedLeaveType = leaveTypes?.find(type => type.id === leaveType);
   const isSickLeave = selectedLeaveType?.name.toLowerCase().includes('sick');
   const requiresMedicalCertificate = isSickLeave && totalDays > 3;
   
   // Check if form is valid for submission
   const isFormValid = !Object.keys(errors).length && 
-    watchedValues.leaveTypeId && 
+    watchedValues.leaveType && 
     watchedValues.startDate && 
     watchedValues.endDate && 
     watchedValues.reason?.length >= 10 &&
@@ -146,17 +146,16 @@ export function EditLeaveClient({ leaveId }: EditLeaveClientProps) {
       
       // Create FormData for multipart/form-data
       const formData = new FormData();
-      formData.append('leaveTypeId', data.leaveTypeId);
+      formData.append('leaveType', data.leaveType); // Fixed: use leaveType instead of leaveTypeId
       formData.append('startDate', data.startDate);
       formData.append('endDate', data.endDate);
       formData.append('reason', data.reason);
-      formData.append('totalDays', totalDays.toString());
       
       if (selectedFile) {
         formData.append('file', selectedFile);
       }
 
-      await updateLeaveMutation.mutateAsync({ id: leave.id, data: formData });
+      await updateLeaveMutation.mutateAsync({ id: leave.id, formData });
       router.push(`/leaves/${leave.id}`);
     } catch (error: any) {
       // Handle specific API errors
@@ -223,7 +222,7 @@ export function EditLeaveClient({ leaveId }: EditLeaveClientProps) {
           <CardContent className="p-6 text-center">
             <p className="text-red-600 mb-4">Failed to load leave details</p>
             <Button asChild>
-              <Link href="/leaves">Back to Leaves</Link>
+              <Link href="/dashboard">Back to Dashboard</Link>
             </Button>
           </CardContent>
         </Card>
@@ -254,70 +253,52 @@ export function EditLeaveClient({ leaveId }: EditLeaveClientProps) {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Edit Leave Request</h1>
-          <p className="text-gray-600">Update your leave request details</p>
+          <Link href="/dashboard" className="text-sm text-gray-500 hover:text-gray-700">
+            ← Back to Dashboard
+          </Link>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center">
-              <Save className="h-5 w-5 mr-2" />
-              Edit Leave Application
-            </CardTitle>
+            <CardTitle className="text-2xl">Edit Leave Request</CardTitle>
             <CardDescription>
-              Make changes to your leave request below
+              Update your leave request details. Changes will be reviewed by your manager.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {apiError && (
-              <Alert className="mb-6 border-red-200 bg-red-50">
-                <AlertTriangle className="h-4 w-4 text-red-600" />
-                <AlertDescription className="text-red-700">
-                  {apiError}
-                </AlertDescription>
-              </Alert>
-            )}
-            
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="leaveTypeId">Leave Type *</Label>
-                  <Select
-                    value={watchedValues.leaveTypeId}
-                    onValueChange={(value) => setValue('leaveTypeId', value)}
-                    disabled={typesLoading}
-                  >
-                    <SelectTrigger className={errors.leaveTypeId ? 'border-red-500' : ''}>
-                      <SelectValue placeholder="Select leave type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {leaveTypes?.map((type) => (
-                        <SelectItem key={type.id} value={type.id}>
-                          {type.name} ({type.maxDays} days max)
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.leaveTypeId && (
-                    <p className="text-sm text-red-500">{errors.leaveTypeId.message}</p>
-                  )}
-                </div>
+              {/* API Error Alert */}
+              {apiError && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>{apiError}</AlertDescription>
+                </Alert>
+              )}
 
-                <div className="space-y-2">
-                  <Label>Total Days</Label>
-                  <div className="p-3 bg-gray-50 rounded-md border">
-                    <span className="text-lg font-semibold text-gray-900">
-                      {totalDays} business day{totalDays !== 1 ? 's' : ''}
-                    </span>
-                    {totalDays > 0 && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        Weekends are excluded from the count
-                      </p>
-                    )}
-                  </div>
-                </div>
+              {/* Leave Type Selection */}
+              <div className="space-y-2">
+                <Label htmlFor="leaveType">Leave Type *</Label>
+                <Select
+                  value={leaveType}
+                  onValueChange={(value) => setValue('leaveType', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select leave type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {leaveTypes?.map((type) => (
+                      <SelectItem key={type.id} value={type.id}>
+                        {type.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.leaveType && (
+                  <p className="text-sm text-red-500">{errors.leaveType.message}</p>
+                )}
               </div>
 
+              {/* Date Selection */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="startDate">Start Date *</Label>
@@ -326,7 +307,6 @@ export function EditLeaveClient({ leaveId }: EditLeaveClientProps) {
                     type="date"
                     {...register('startDate')}
                     className={errors.startDate ? 'border-red-500' : ''}
-                    min={format(new Date(), 'yyyy-MM-dd')}
                   />
                   {errors.startDate && (
                     <p className="text-sm text-red-500">{errors.startDate.message}</p>
@@ -340,7 +320,6 @@ export function EditLeaveClient({ leaveId }: EditLeaveClientProps) {
                     type="date"
                     {...register('endDate')}
                     className={errors.endDate ? 'border-red-500' : ''}
-                    min={startDate || format(new Date(), 'yyyy-MM-dd')}
                   />
                   {errors.endDate && (
                     <p className="text-sm text-red-500">{errors.endDate.message}</p>
@@ -348,23 +327,19 @@ export function EditLeaveClient({ leaveId }: EditLeaveClientProps) {
                 </div>
               </div>
 
-              {requiresMedicalCertificate && (
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <div className="flex items-start">
-                    <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5 mr-3" />
-                    <div>
-                      <h4 className="text-sm font-medium text-yellow-800">
-                        Medical Certificate Required
-                      </h4>
-                      <p className="text-sm text-yellow-700 mt-1">
-                        Sick leave requests for more than 3 days require a medical certificate.
-                        Please upload the document below.
-                      </p>
-                    </div>
+              {/* Total Days Display */}
+              {startDate && endDate && (
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <Calendar className="h-5 w-5 text-blue-600" />
+                    <span className="text-sm font-medium text-blue-900">
+                      Total Days: {totalDays} business day{totalDays !== 1 ? 's' : ''}
+                    </span>
                   </div>
                 </div>
               )}
 
+              {/* Reason */}
               <div className="space-y-2">
                 <Label htmlFor="reason">Reason *</Label>
                 <Textarea
@@ -377,113 +352,111 @@ export function EditLeaveClient({ leaveId }: EditLeaveClientProps) {
                 {errors.reason && (
                   <p className="text-sm text-red-500">{errors.reason.message}</p>
                 )}
+                <p className="text-sm text-gray-500">
+                  Minimum 10 characters required
+                </p>
               </div>
 
+              {/* File Upload */}
               <div className="space-y-2">
-                <Label htmlFor="file">
-                  Supporting Document {requiresMedicalCertificate ? '*' : '(Optional)'}
-                </Label>
-                
-                {/* Show existing file if any */}
-                {leave.attachmentUrl && !selectedFile && (
-                  <div className="border border-gray-200 rounded-lg p-4 mb-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <FileText className="h-8 w-8 text-blue-600" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">
-                            {leave.attachmentUrl.split('/').pop()}
-                          </p>
-                          <p className="text-xs text-gray-500">Current document</p>
-                        </div>
-                      </div>
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={leave.attachmentUrl} download target="_blank" rel="noopener noreferrer">
-                          <FileText className="h-4 w-4 mr-1" />
-                          Download
-                        </a>
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                
-                {!selectedFile ? (
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
-                    <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <div className="space-y-2">
-                      <Label htmlFor="file" className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
-                        {leave.attachmentUrl ? 'Upload new document' : 'Click to upload or drag and drop'}
-                      </Label>
-                      <p className="text-xs text-gray-500">
-                        PDF, JPG, PNG, DOC, DOCX (max 5MB)
-                      </p>
-                    </div>
-                    <Input
-                      id="file"
-                      type="file"
-                      onChange={handleFileChange}
-                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                      className="hidden"
-                    />
-                  </div>
-                ) : (
-                  <div className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <FileText className="h-8 w-8 text-blue-600" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">{selectedFile.name}</p>
-                          <p className="text-xs text-gray-500">
-                            {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                          </p>
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={removeFile}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                
-                {requiresMedicalCertificate && !selectedFile && !leave.attachmentUrl && (
-                  <p className="text-sm text-red-500">
-                    Medical certificate is required for sick leave longer than 3 days
+                <Label htmlFor="file">Supporting Document</Label>
+                {requiresMedicalCertificate && (
+                  <p className="text-sm text-amber-600 font-medium">
+                    Medical certificate required for sick leave over 3 days
                   </p>
                 )}
+                
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+                  <div className="text-center">
+                    <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                    <div className="text-sm text-gray-600">
+                      <label htmlFor="file" className="cursor-pointer">
+                        <span className="font-medium text-blue-600 hover:text-blue-500">
+                          Click to upload
+                        </span>
+                        {' '}or drag and drop
+                      </label>
+                      <input
+                        id="file"
+                        type="file"
+                        className="hidden"
+                        onChange={handleFileChange}
+                        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      PDF, JPG, PNG, DOC, DOCX (max 5MB)
+                    </p>
+                  </div>
+                </div>
+
+                {/* Selected File Display */}
+                {selectedFile && (
+                  <div className="flex items-center space-x-2 p-3 bg-green-50 rounded-lg">
+                    <FileText className="h-5 w-5 text-green-600" />
+                    <span className="text-sm text-green-800 flex-1">
+                      {selectedFile.name}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={removeFile}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+
+                {/* Existing File Display */}
+                {leave.attachmentUrl && !selectedFile && (
+                  <div className="flex items-center space-x-2 p-3 bg-blue-50 rounded-lg">
+                    <FileText className="h-5 w-5 text-blue-600" />
+                    <span className="text-sm text-blue-800 flex-1">
+                      Current file attached
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      asChild
+                      className="text-blue-600 hover:text-blue-700"
+                    >
+                      <a href={leave.attachmentUrl} download target="_blank" rel="noopener noreferrer">
+                        Download
+                      </a>
+                    </Button>
+                  </div>
+                )}
+
+                {/* Upload Progress */}
+                {isUploading && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span>Uploading file...</span>
+                      <span>{uploadProgress}%</span>
+                    </div>
+                    <Progress value={uploadProgress} className="h-2" />
+                  </div>
+                )}
               </div>
 
-              {/* Upload Progress */}
-              {isUploading && uploadProgress > 0 && (
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Uploading...</span>
-                    <span>{uploadProgress}%</span>
-                  </div>
-                  <Progress value={uploadProgress} className="w-full" />
-                </div>
-              )}
-
-              <div className="flex justify-end space-x-4 pt-6 border-t">
-                <Button variant="outline" asChild disabled={isSubmitDisabled}>
-                  <Link href={`/leaves/${leave.id}`}>Cancel</Link>
+              {/* Submit Button */}
+              <div className="flex justify-end space-x-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.push(`/leaves/${leave.id}`)}
+                >
+                  Cancel
                 </Button>
                 <Button
                   type="submit"
                   disabled={isSubmitDisabled}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
-                  {isUploading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Uploading...
-                    </>
-                  ) : updateLeaveMutation.isPending ? (
+                  {updateLeaveMutation.isPending ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                       Updating...

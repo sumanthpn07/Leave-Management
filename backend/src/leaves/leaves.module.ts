@@ -6,11 +6,12 @@ import { LeavesService } from './leaves.service';
 import { LeavesController } from './leaves.controller';
 import { Employee } from '../employees/entities/employee.entity';
 import { LeaveWorkflow } from '../workflows/entities/leave-workflow.entity';
+import { FileUploadService } from '../common/services/file-upload.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([LeaveRequest, LeaveBalance, Employee, LeaveWorkflow])],
   controllers: [LeavesController],
-  providers: [LeavesService],
+  providers: [LeavesService, FileUploadService],
   exports: [LeavesService],
 })
 export class LeavesModule {}

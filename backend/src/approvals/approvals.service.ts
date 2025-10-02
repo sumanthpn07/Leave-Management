@@ -136,9 +136,44 @@ export class ApprovalsService {
   }
 
   async history(user: Employee, id: string) {
-    const leave = await this.leaveRepo.findOne({ where: { id } });
+    const leave = await this.leaveRepo.findOne({ 
+      where: { id },
+      relations: ['employee']
+    });
     if (!leave) throw new NotFoundException('Leave not found');
-    const approvals = await this.approvalRepo.find({ where: { leaveRequestId: id }, order: { timestamp: 'ASC' } });
-    return { success: true, data: { leaveRequest: leave, approvals } };
+    
+    // Get approvals with approver details
+    const approvals = await this.approvalRepo.find({ 
+      where: { leaveRequestId: id }, 
+      relations: ['approver'],
+      order: { timestamp: 'ASC' } 
+    });
+
+    // Create approval history array starting with "Applied" entry
+    const history = [];
+    
+    // Add "Applied" entry
+    history.push({
+      id: `applied-${leave.id}`,
+      approver: leave.employee.name,
+      approverType: 'EMPLOYEE',
+      action: 'APPLIED',
+      comments: 'Leave request submitted',
+      timestamp: leave.appliedAt,
+    });
+
+    // Add actual approvals
+    approvals.forEach(approval => {
+      history.push({
+        id: approval.id,
+        approver: approval.approver?.name || 'Unknown',
+        approverType: approval.approverType,
+        action: approval.action,
+        comments: approval.comments,
+        timestamp: approval.timestamp,
+      });
+    });
+
+    return { success: true, data: { leaveRequest: leave, approvals: history } };
   }
 }

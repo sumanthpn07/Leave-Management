@@ -106,18 +106,18 @@ export const useLeaveBalances = () => {
         const mappedBalances: LeaveBalance[] = apiBalances.map((balance: any) => ({
           id: balance.id,
           leaveTypeId: String(balance.leaveType),
-          leaveType: {
-            id: String(balance.leaveType),
-            name: String(balance.leaveType),
-            maxDays: 25, // Default value
-            carryForward: true,
-            requiresApproval: true,
-          },
           allocated: balance.allocated,
           used: balance.used,
           remaining: balance.remaining,
           carryForward: balance.carryForward,
           year: balance.year,
+          leaveType: {
+            id: String(balance.leaveType),
+            name: String(balance.leaveType),
+            maxDays: balance.allocated,
+            carryForward: balance.carryForward > 0,
+            requiresApproval: true,
+          },
         }));
         
         return mappedBalances;
@@ -131,14 +131,29 @@ export const useLeaveBalances = () => {
   });
 };
 
-// Apply for new leave - INTEGRATED WITH BACKEND
+// Get leave types - STATIC DATA
+export const useLeaveTypes = () => {
+  return useQuery({
+    queryKey: ['leaveTypes'],
+    queryFn: async (): Promise<LeaveType[]> => {
+      const leaveTypes: LeaveType[] = [
+        { id: 'ANNUAL', name: 'Annual Leave', maxDays: 18, carryForward: true, requiresApproval: true },
+        { id: 'SICK', name: 'Sick Leave', maxDays: 10, carryForward: false, requiresApproval: true },
+        { id: 'PERSONAL', name: 'Personal Leave', maxDays: 18, carryForward: false, requiresApproval: true },
+      ];
+      return leaveTypes;
+    },
+    staleTime: 30 * 60 * 1000, // 30 minutes
+  });
+};
+
+// Apply for leave - INTEGRATED WITH BACKEND
 export const useApplyLeave = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: CreateLeaveRequest | FormData): Promise<LeaveRequest> => {
-      // Send FormData directly to backend
-      const response = await leaveApi.applyLeave(data);
+    mutationFn: async (formData: FormData): Promise<LeaveRequest> => {
+      const response = await leaveApi.applyLeave(formData);
       return response.data?.data || response.data;
     },
     onSuccess: () => {
@@ -152,14 +167,13 @@ export const useApplyLeave = () => {
   });
 };
 
-// Update existing leave - INTEGRATED WITH BACKEND
+// Update leave - INTEGRATED WITH BACKEND
 export const useUpdateLeave = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: CreateLeaveRequest | FormData }): Promise<LeaveRequest> => {
-      // Send FormData directly to backend
-      const response = await leaveApi.updateLeave(id, data);
+    mutationFn: async ({ id, formData }: { id: string; formData: FormData }): Promise<LeaveRequest> => {
+      const response = await leaveApi.updateLeave(id, formData);
       return response.data?.data || response.data;
     },
     onSuccess: () => {
@@ -173,7 +187,7 @@ export const useUpdateLeave = () => {
   });
 };
 
-// Cancel leave request - INTEGRATED WITH BACKEND
+// Cancel leave - INTEGRATED WITH BACKEND
 export const useCancelLeave = () => {
   const queryClient = useQueryClient();
 
@@ -183,7 +197,7 @@ export const useCancelLeave = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['myLeaves'] });
-      queryClient.invalidateQueries({ queryKey: ['pendingApprovals'] });
+      queryClient.invalidateQueries({ queryKey: ['leaveDetails'] });
       toast.success('Leave request cancelled successfully');
     },
     onError: (error: any) => {
@@ -192,11 +206,11 @@ export const useCancelLeave = () => {
   });
 };
 
-// Approve or reject leave request - FIXED TO USE CORRECT API ENDPOINTS AND USER ROLE
+// Approve/Reject leave - INTEGRATED WITH BACKEND
 export const useApproveLeave = () => {
   const queryClient = useQueryClient();
   const { user } = useAuthContext();
-
+  
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: { status: string; approvalComment?: string; rejectionReason?: string } }): Promise<LeaveRequest> => {
       // Determine the approver type based on current user role
@@ -283,101 +297,10 @@ export const useApprovalHistory = (id: string) => {
       const response = await leaveApi.getApprovalHistory(id);
       const history = response.data?.data || response.data;
       
-      // Map backend response to frontend type
-      return history.approvals?.map((approval: any) => ({
-        id: approval.id,
-        approver: approval.approver?.name || 'Unknown',
-        approverType: approval.approverType,
-        action: approval.action,
-        comments: approval.comments,
-        timestamp: approval.timestamp,
-      })) || [];
+      // Return the history array directly (backend now includes "Applied" entry)
+      return history.approvals || [];
     },
     enabled: !!id,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-};
-
-// Get admin leave summary - INTEGRATED WITH BACKEND
-export const useAdminLeaveSummary = () => {
-  return useQuery({
-    queryKey: ['adminLeaveSummary'],
-    queryFn: async (): Promise<any> => {
-      const response = await leaveApi.getAdminLeaveSummary();
-      return response.data?.data || response.data;
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-};
-
-// Get admin pending approvals - INTEGRATED WITH BACKEND
-export const useAdminPendingApprovals = () => {
-  return useQuery({
-    queryKey: ['adminPendingApprovals'],
-    queryFn: async (): Promise<LeaveRequest[]> => {
-      const response = await leaveApi.getAdminPendingApprovals();
-      const apiLeaves = response.data?.data || response.data;
-      
-      // Map backend response to frontend type
-      const mappedLeaves: LeaveRequest[] = apiLeaves.map((leave: any) => ({
-        id: leave.id,
-        userId: leave.employeeId,
-        leaveTypeId: String(leave.leaveType),
-        startDate: leave.startDate,
-        endDate: leave.endDate,
-        totalDays: leave.totalDays,
-        reason: leave.reason,
-        status: leave.status,
-        appliedAt: leave.appliedAt,
-        attachmentUrl: leave.documents,
-        leaveType: {
-          id: String(leave.leaveType),
-          name: String(leave.leaveType),
-          maxDays: 25, // Default value
-          carryForward: true,
-          requiresApproval: true,
-        },
-        user: leave.employee, // Include employee details for pending approvals
-        reportingManagerId: leave.employee?.reportingManagerId,
-        hrManagerId: undefined, // Not in backend response
-      }));
-      
-      return mappedLeaves;
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-};
-
-// Get leave types - INTEGRATED WITH BACKEND
-export const useLeaveTypes = () => {
-  return useQuery({
-    queryKey: ['leaveTypes'],
-    queryFn: async (): Promise<LeaveType[]> => {
-      // For now, return static leave types since backend doesn't have a specific endpoint
-      return [
-        {
-          id: 'ANNUAL',
-          name: 'Annual',
-          maxDays: 12,
-          carryForward: true,
-          requiresApproval: true,
-        },
-        {
-          id: 'SICK',
-          name: 'Sick',
-          maxDays: 10,
-          carryForward: false,
-          requiresApproval: true,
-        },
-        {
-          id: 'PERSONAL',
-          name: 'Personal',
-          maxDays: 18,
-          carryForward: true,
-          requiresApproval: true,
-        },
-      ];
-    },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 };

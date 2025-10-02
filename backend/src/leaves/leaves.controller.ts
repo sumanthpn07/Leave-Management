@@ -1,20 +1,38 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards, Req } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags, ApiBody } from '@nestjs/swagger';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards, Req, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags, ApiBody, ApiConsumes } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { LeavesService } from './leaves.service';
 import { CreateLeaveDto } from './dto/create-leave.dto';
 import { UpdateLeaveDto } from './dto/update-leave.dto';
+import { FileUploadService } from '../common/services/file-upload.service';
 
 @ApiTags('Leaves')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard)
 @Controller('leaves')
 export class LeavesController {
-  constructor(private readonly leavesService: LeavesService) {}
+  constructor(
+    private readonly leavesService: LeavesService,
+    private readonly fileUploadService: FileUploadService,
+  ) {}
 
   @Post()
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Apply for new leave' })
-  @ApiBody({ type: CreateLeaveDto })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        leaveType: { type: 'string', example: 'ANNUAL' },
+        startDate: { type: 'string', example: '2024-12-15' },
+        endDate: { type: 'string', example: '2024-12-17' },
+        reason: { type: 'string', example: 'Family vacation' },
+        file: { type: 'string', format: 'binary', description: 'Optional supporting document' }
+      }
+    }
+  })
   @ApiResponse({ 
     status: 201, 
     description: 'Leave applied successfully',
@@ -34,7 +52,8 @@ export class LeavesController {
             totalDays: { type: 'number', example: 3 },
             reason: { type: 'string', example: 'Family vacation' },
             status: { type: 'string', example: 'PENDING_RM' },
-            appliedAt: { type: 'string', example: '2024-12-01T10:00:00Z' }
+            appliedAt: { type: 'string', example: '2024-12-01T10:00:00Z' },
+            documents: { type: 'string', example: '/uploads/1234567890_abc123.pdf' }
           }
         }
       }
@@ -42,8 +61,28 @@ export class LeavesController {
   })
   @ApiResponse({ status: 400, description: 'Bad request - validation errors' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  apply(@Req() req: any, @Body() dto: CreateLeaveDto) {
-    return this.leavesService.apply(req.user.id, dto);
+  async apply(@Req() req: any, @Body() dto: CreateLeaveDto, @UploadedFile() file?: any) {
+    let documents: string | undefined;
+    
+    if (file) {
+      // Validate and save the file
+      this.fileUploadService.validateFile(file);
+      const filename = this.fileUploadService.generateFileName(file.originalname);
+      const filePath = this.fileUploadService.getFilePath(filename);
+      
+      // Save file to disk
+      const fs = require('fs');
+      fs.writeFileSync(filePath, file.buffer);
+      
+      documents = this.fileUploadService.getFileUrl(filename);
+    }
+
+    const leaveData = {
+      ...dto,
+      documents,
+    };
+
+    return this.leavesService.apply(req.user.id, leaveData);
   }
 
   @Get()
@@ -67,7 +106,8 @@ export class LeavesController {
               totalDays: { type: 'number', example: 3 },
               reason: { type: 'string', example: 'Family vacation' },
               status: { type: 'string', example: 'PENDING_RM' },
-              appliedAt: { type: 'string', example: '2024-12-01T10:00:00Z' }
+              appliedAt: { type: 'string', example: '2024-12-01T10:00:00Z' },
+              documents: { type: 'string', example: '/uploads/1234567890_abc123.pdf' }
             }
           }
         }
@@ -126,7 +166,8 @@ export class LeavesController {
             totalDays: { type: 'number', example: 3 },
             reason: { type: 'string', example: 'Family vacation' },
             status: { type: 'string', example: 'PENDING_RM' },
-            appliedAt: { type: 'string', example: '2024-12-01T10:00:00Z' }
+            appliedAt: { type: 'string', example: '2024-12-01T10:00:00Z' },
+            documents: { type: 'string', example: '/uploads/1234567890_abc123.pdf' }
           }
         }
       }
@@ -138,8 +179,21 @@ export class LeavesController {
   }
 
   @Put(':id')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Update a leave (pending only)' })
-  @ApiBody({ type: UpdateLeaveDto })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        leaveType: { type: 'string', example: 'ANNUAL' },
+        startDate: { type: 'string', example: '2024-12-15' },
+        endDate: { type: 'string', example: '2024-12-17' },
+        reason: { type: 'string', example: 'Family vacation' },
+        file: { type: 'string', format: 'binary', description: 'Optional supporting document' }
+      }
+    }
+  })
   @ApiResponse({ 
     status: 200, 
     description: 'Leave updated successfully',
@@ -157,7 +211,8 @@ export class LeavesController {
             endDate: { type: 'string', example: '2024-12-17' },
             totalDays: { type: 'number', example: 3 },
             reason: { type: 'string', example: 'Family vacation' },
-            status: { type: 'string', example: 'PENDING_RM' }
+            status: { type: 'string', example: 'PENDING_RM' },
+            documents: { type: 'string', example: '/uploads/1234567890_abc123.pdf' }
           }
         }
       }
@@ -165,8 +220,28 @@ export class LeavesController {
   })
   @ApiResponse({ status: 400, description: 'Bad request - only pending leaves can be updated' })
   @ApiResponse({ status: 404, description: 'Leave not found' })
-  update(@Req() req: any, @Param('id') id: string, @Body() dto: UpdateLeaveDto) {
-    return this.leavesService.update(req.user.id, id, dto);
+  async update(@Req() req: any, @Param('id') id: string, @Body() dto: UpdateLeaveDto, @UploadedFile() file?: any) {
+    let documents: string | undefined;
+    
+    if (file) {
+      // Validate and save the file
+      this.fileUploadService.validateFile(file);
+      const filename = this.fileUploadService.generateFileName(file.originalname);
+      const filePath = this.fileUploadService.getFilePath(filename);
+      
+      // Save file to disk
+      const fs = require('fs');
+      fs.writeFileSync(filePath, file.buffer);
+      
+      documents = this.fileUploadService.getFileUrl(filename);
+    }
+
+    const leaveData = {
+      ...dto,
+      documents,
+    };
+
+    return this.leavesService.update(req.user.id, id, leaveData);
   }
 
   @Delete(':id')

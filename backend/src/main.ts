@@ -3,10 +3,17 @@ import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
 import { Logger } from '@nestjs/common';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const logger = new Logger('HTTP');
+  
+  // Serve static files from uploads directory
+  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+    prefix: '/uploads/',
+  });
   
   // Request logging middleware
   app.use((req, res, next) => {
@@ -44,7 +51,7 @@ async function bootstrap() {
     req.startTime = Date.now();
     next();
   });
-  
+
   // Enable CORS for frontend
   app.enableCors({
     origin: ['http://localhost:3000'],
@@ -53,9 +60,9 @@ async function bootstrap() {
 
   // Global validation pipe
   app.useGlobalPipes(new ValidationPipe({
-    whitelist: true, // Strip properties not defined in DTOs
-    forbidNonWhitelisted: true, // Throw error if non-whitelisted properties are present
-    transform: true, // Automatically transform payloads to DTO instances
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
   }));
 
   // Swagger configuration
@@ -72,7 +79,7 @@ async function bootstrap() {
         description: 'Enter JWT token',
         in: 'header',
       },
-      'JWT-auth', // This name here is important for matching up with @ApiBearerAuth() in your controller!
+      'JWT-auth',
     )
     .addTag('Authentication', 'User authentication endpoints')
     .addTag('Employees', 'Employee management endpoints')
@@ -84,15 +91,16 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document, {
     swaggerOptions: {
-      persistAuthorization: true, // This will persist the JWT token in the browser
+      persistAuthorization: true,
     },
   });
-  
+
   const port = process.env.PORT || 3001;
   await app.listen(port);
   
   console.log(`🚀 Application is running on: http://localhost:${port}`);
   console.log(`📚 Swagger documentation: http://localhost:${port}/api`);
+  console.log(`�� File uploads: http://localhost:${port}/uploads/`);
   console.log(`📝 Request logging enabled - all requests will be logged`);
 }
 
