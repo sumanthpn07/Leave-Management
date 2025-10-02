@@ -1,6 +1,8 @@
 import { DataSource } from 'typeorm';
 import { config } from 'dotenv';
 import { seedEmployees } from './seeds/employee.seed';
+import { seedLeaveBalances } from './seeds/leave-balance.seed';
+import { seedSampleLeaves } from './seeds/leave-request.seed';
 
 // Load environment variables
 config();
@@ -21,11 +23,17 @@ async function clearAndSeed() {
     await dataSource.initialize();
     console.log('Database connected successfully');
 
-    // Clear existing data
+    // Clear existing data in correct order (respecting foreign key constraints)
+    await dataSource.query('DELETE FROM leave_approvals');
+    await dataSource.query('DELETE FROM leave_workflows');
+    await dataSource.query('DELETE FROM leave_requests');
+    await dataSource.query('DELETE FROM leave_balances');
     await dataSource.query('DELETE FROM employees');
-    console.log('Cleared existing employees');
+    console.log('Existing data cleared');
 
     await seedEmployees(dataSource);
+    await seedLeaveBalances(dataSource);
+    await seedSampleLeaves(dataSource);
     
     console.log('Seeding completed successfully');
   } catch (error) {

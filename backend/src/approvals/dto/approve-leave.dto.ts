@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { ApproverType } from '../../common/enums/approver-type.enum';
 
 export class ApproveLeaveDto {
@@ -7,6 +8,7 @@ export class ApproveLeaveDto {
     enum: ['approve', 'reject'],
     example: 'approve'
   })
+  @IsEnum(['approve', 'reject'])
   action: 'approve' | 'reject';
 
   @ApiProperty({
@@ -14,6 +16,7 @@ export class ApproveLeaveDto {
     enum: ApproverType,
     example: ApproverType.REPORTING_MANAGER
   })
+  @IsEnum(ApproverType)
   approverType: ApproverType;
 
   @ApiProperty({
@@ -21,5 +24,7 @@ export class ApproveLeaveDto {
     example: 'Approved for family function',
     required: false
   })
+  @IsOptional()
+  @IsString()
   comments?: string;
 }

@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { CircleCheck as CheckCircle, Circle as XCircle, Calendar, Clock, FileText } from 'lucide-react';
 import { format } from 'date-fns';
+import { LeaveRequest } from '@/types/leave';
 
 const approveSchema = z.object({
   comment: z.string().optional(),
@@ -21,26 +22,18 @@ const rejectSchema = z.object({
 
 interface ApprovalModalProps {
   mode: 'approve' | 'reject';
-  employeeName: string;
-  leaveDetails: {
-    type: string;
-    startDate: string;
-    endDate: string;
-    totalDays: number;
-    reason: string;
-  };
+  leave: LeaveRequest;
   onConfirm: (comment?: string) => void;
-  onCancel: () => void;
-  isLoading: boolean;
+  onClose: () => void;
+  isLoading?: boolean;
 }
 
 export function ApprovalModal({
   mode,
-  employeeName,
-  leaveDetails,
+  leave,
   onConfirm,
-  onCancel,
-  isLoading,
+  onClose,
+  isLoading = false,
 }: ApprovalModalProps) {
   const schema = mode === 'reject' ? rejectSchema : approveSchema;
   
@@ -59,8 +52,8 @@ export function ApprovalModal({
   const isApprove = mode === 'approve';
   const title = isApprove ? 'Approve Leave Request' : 'Reject Leave Request';
   const description = isApprove 
-    ? `Are you sure you want to approve this leave request for ${employeeName}?`
-    : `Please provide a reason for rejecting this leave request for ${employeeName}.`;
+    ? `Are you sure you want to approve this leave request for ${leave.user?.name || 'the employee'}?`
+    : `Please provide a reason for rejecting this leave request for ${leave.user?.name || 'the employee'}.`;
   
   const buttonText = isApprove ? 'Approve Request' : 'Reject Request';
   const buttonClass = isApprove 
@@ -68,7 +61,7 @@ export function ApprovalModal({
     : 'bg-red-600 hover:bg-red-700';
 
   return (
-    <Dialog open={true} onOpenChange={onCancel}>
+    <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center">
@@ -92,14 +85,14 @@ export function ApprovalModal({
               <FileText className="h-4 w-4 text-gray-500" />
               <div>
                 <span className="font-medium text-gray-700">Type:</span>
-                <span className="ml-1 text-gray-600">{leaveDetails.type}</span>
+                <span className="ml-1 text-gray-600">{leave.leaveType?.name || leave.leaveType || 'Unknown'}</span>
               </div>
             </div>
             <div className="flex items-center space-x-2">
               <Clock className="h-4 w-4 text-gray-500" />
               <div>
                 <span className="font-medium text-gray-700">Duration:</span>
-                <span className="ml-1 text-gray-600">{leaveDetails.totalDays} day{leaveDetails.totalDays !== 1 ? 's' : ''}</span>
+                <span className="ml-1 text-gray-600">{leave.totalDays} day{leave.totalDays !== 1 ? 's' : ''}</span>
               </div>
             </div>
             <div className="flex items-center space-x-2 md:col-span-2">
@@ -107,7 +100,7 @@ export function ApprovalModal({
               <div>
                 <span className="font-medium text-gray-700">Dates:</span>
                 <span className="ml-1 text-gray-600">
-                  {format(new Date(leaveDetails.startDate), 'MMM dd, yyyy')} - {format(new Date(leaveDetails.endDate), 'MMM dd, yyyy')}
+                  {format(new Date(leave.startDate), 'MMM dd, yyyy')} - {format(new Date(leave.endDate), 'MMM dd, yyyy')}
                 </span>
               </div>
             </div>
@@ -115,7 +108,7 @@ export function ApprovalModal({
           <div className="mt-3">
             <span className="font-medium text-gray-700">Reason:</span>
             <p className="text-gray-600 mt-1 text-sm leading-relaxed">
-              {leaveDetails.reason}
+              {leave.reason}
             </p>
           </div>
         </div>
@@ -145,7 +138,7 @@ export function ApprovalModal({
             <Button
               type="button"
               variant="outline"
-              onClick={onCancel}
+              onClick={onClose}
               disabled={isLoading}
             >
               Cancel

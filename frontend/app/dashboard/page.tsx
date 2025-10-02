@@ -30,13 +30,13 @@ export default function DashboardPage() {
   const availableDays = leaveBalances?.reduce((total, balance) => {
     const leaveType = balance.leaveType?.name?.toLowerCase() || balance.leaveTypeId?.toLowerCase() || '';
     if (leaveType.includes('annual') || leaveType.includes('personal')) {
-      return total + balance.remainingDays;
+      return total + balance.remaining;
     }
     return total;
   }, 0) || 0;
 
   const totalUsedDays = leaveBalances?.reduce((total, balance) => 
-    total + balance.usedDays, 0
+    total + balance.used, 0
   ) || 0;
 
   // Get 3 most recent leave requests sorted by appliedAt date
@@ -141,17 +141,17 @@ export default function DashboardPage() {
                         <div className="space-y-2">
                           <div className="flex justify-between text-sm">
                             <span className="text-gray-600">Remaining</span>
-                            <span className="font-semibold">{balance.remainingDays} days</span>
+                            <span className="font-semibold">{balance.remaining} days</span>
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div 
-                              className={`h-2 rounded-full ${getProgressColor(balance.remainingDays, balance.totalDays)}`}
-                              style={{ width: `${(balance.remainingDays / balance.totalDays) * 100}%` }}
+                              className={`h-2 rounded-full ${getProgressColor(balance.remaining, balance.allocated)}`}
+                              style={{ width: `${(balance.remaining / balance.allocated) * 100}%` }}
                             ></div>
                           </div>
                           <div className="flex justify-between text-xs text-gray-500">
-                            <span>Used: {balance.usedDays}</span>
-                            <span>Total: {balance.totalDays}</span>
+                            <span>Used: {balance.used}</span>
+                            <span>Total: {balance.allocated}</span>
                           </div>
                         </div>
                       </CardContent>

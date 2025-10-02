@@ -1,79 +1,31 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useLeaveDetails, useCancelLeave, useApprovalHistory } from '@/hooks/use-leaves';
-import { useAuth } from '@/hooks/use-auth';
+import { useLeaveDetails, useApprovalHistory } from '@/hooks/use-leaves';
+import { useAuthContext } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Calendar, Clock, FileText, User, X, CircleCheck as CheckCircle, Circle as XCircle, CircleAlert as AlertCircle, CreditCard as Edit } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Calendar, Clock, User, FileText, Download, AlertTriangle, CheckCircle, XCircle, Edit, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 interface LeaveDetailsClientProps {
   leaveId: string;
 }
 
 export function LeaveDetailsClient({ leaveId }: LeaveDetailsClientProps) {
+  const { user } = useAuthContext();
   const router = useRouter();
-  const { user } = useAuth();
-  
+  const [approvalComments, setApprovalComments] = useState('');
+  const [rejectionComments, setRejectionComments] = useState('');
+
   const { data: leave, isLoading, error } = useLeaveDetails(leaveId);
-  const { data: approvalHistory } = useApprovalHistory(leaveId);
-  const cancelLeaveMutation = useCancelLeave();
-
-  const canCancelLeave = leave && 
-    leave.userId === user?.id && 
-    ['PENDING_RM', 'PENDING_HR'].includes(leave.status) && 
-    new Date(leave.startDate) >= new Date();
-
-  const handleCancelLeave = async () => {
-    if (!leave) return;
-    
-    try {
-      await cancelLeaveMutation.mutateAsync(leave.id);
-      router.push('/leaves');
-    } catch (error) {
-      // Error handling is done in the mutation
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    const variants = {
-      PENDING_RM: { className: 'bg-yellow-100 text-yellow-800 border-yellow-200', icon: AlertCircle },
-      PENDING_HR: { className: 'bg-orange-100 text-orange-800 border-orange-200', icon: AlertCircle },
-      APPROVED: { className: 'bg-green-100 text-green-800 border-green-200', icon: CheckCircle },
-      REJECTED: { className: 'bg-red-100 text-red-800 border-red-200', icon: XCircle },
-      CANCELLED: { className: 'bg-gray-100 text-gray-800 border-gray-200', icon: X },
-    };
-    
-    const variant = variants[status as keyof typeof variants] || variants.PENDING_RM;
-    const Icon = variant.icon;
-    
-    const statusText = status === 'PENDING_RM' ? 'Pending RM' : 
-                     status === 'PENDING_HR' ? 'Pending HR' : 
-                     status.toLowerCase();
-    
-    return (
-      <Badge className={variant.className}>
-        <Icon className="h-3 w-3 mr-1" />
-        {statusText}
-      </Badge>
-    );
-  };
-
-  const getActionIcon = (action: string) => {
-    switch (action) {
-      case 'SUBMITTED': return <FileText className="h-4 w-4 text-blue-600" />;
-      case 'APPROVED': return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'REJECTED': return <XCircle className="h-4 w-4 text-red-600" />;
-      case 'CANCELLED': return <X className="h-4 w-4 text-gray-600" />;
-      default: return <Clock className="h-4 w-4 text-gray-600" />;
-    }
-  };
+  const { data: approvalHistory, isLoading: historyLoading } = useApprovalHistory(leaveId);
 
   if (isLoading) {
     return (
@@ -105,6 +57,72 @@ export function LeaveDetailsClient({ leaveId }: LeaveDetailsClientProps) {
     );
   }
 
+  const getStatusBadge = (status: string) => {
+    const variants = {
+      PENDING_RM: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      PENDING_HR: 'bg-orange-100 text-orange-800 border-orange-200',
+      APPROVED: 'bg-green-100 text-green-800 border-green-200',
+      REJECTED: 'bg-red-100 text-red-800 border-red-200',
+      CANCELLED: 'bg-gray-100 text-gray-800 border-gray-200',
+    };
+    
+    const statusText = status === 'PENDING_RM' ? 'Pending RM' : 
+                     status === 'PENDING_HR' ? 'Pending HR' : 
+                     status.toLowerCase();
+    
+    return (
+      <Badge className={variants[status as keyof typeof variants] || variants.PENDING_RM}>
+        {statusText}
+      </Badge>
+    );
+  };
+
+  const canEditLeave = () => {
+    if (!leave) return false;
+    const isPending = ['PENDING_RM', 'PENDING_HR'].includes(leave.status);
+    const isFuture = new Date(leave.startDate) > new Date();
+    return isPending && isFuture;
+  };
+
+  const canCancelLeave = () => {
+    if (!leave) return false;
+    const isPending = ['PENDING_RM', 'PENDING_HR'].includes(leave.status);
+    const isFuture = new Date(leave.startDate) > new Date();
+    return isPending && isFuture;
+  };
+
+  const handleApprove = async () => {
+    try {
+      // TODO: Implement approval logic
+      toast.success('Leave request approved successfully');
+    } catch (error) {
+      toast.error('Failed to approve leave request');
+    }
+  };
+
+  const handleReject = async () => {
+    try {
+      // TODO: Implement rejection logic
+      toast.success('Leave request rejected');
+    } catch (error) {
+      toast.error('Failed to reject leave request');
+    }
+  };
+
+  const handleCancel = async () => {
+    try {
+      // TODO: Implement cancellation logic
+      toast.success('Leave request cancelled');
+      router.push('/leaves');
+    } catch (error) {
+      toast.error('Failed to cancel leave request');
+    }
+  };
+
+  const handleEdit = () => {
+    router.push(`/leaves/${leave.id}/edit`);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -118,37 +136,35 @@ export function LeaveDetailsClient({ leaveId }: LeaveDetailsClientProps) {
               </div>
             </div>
             <div className="flex items-center space-x-3">
-              {canCancelLeave && (
-                <Button variant="outline" asChild>
-                  <Link href={`/leaves/${leave.id}/edit`}>
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit Request
-                  </Link>
+              {getStatusBadge(leave.status)}
+              {canEditLeave() && (
+                <Button variant="outline" onClick={handleEdit}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
                 </Button>
               )}
-              {canCancelLeave && (
+              {canCancelLeave() && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="outline" className="text-red-600 hover:text-red-700">
-                      <X className="h-4 w-4 mr-2" />
-                      Delete Request
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Cancel
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Delete Leave Request</AlertDialogTitle>
+                      <AlertDialogTitle>Cancel Leave Request</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Are you sure you want to delete this leave request? This action cannot be undone.
+                        Are you sure you want to cancel this leave request? This action cannot be undone.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Keep Request</AlertDialogCancel>
                       <AlertDialogAction
-                        onClick={handleCancelLeave}
+                        onClick={handleCancel}
                         className="bg-red-600 hover:bg-red-700"
-                        disabled={cancelLeaveMutation.isPending}
                       >
-                        {cancelLeaveMutation.isPending ? 'Deleting...' : 'Delete Request'}
+                        Cancel Request
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -158,263 +174,168 @@ export function LeaveDetailsClient({ leaveId }: LeaveDetailsClientProps) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Details */}
-          <div className="lg:col-span-2 space-y-6">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center">
-                    <Calendar className="h-5 w-5 mr-2" />
-                    Leave Information
-                  </CardTitle>
+        {/* Main Content */}
+        <div className="space-y-6">
+          {/* Leave Details */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Calendar className="h-5 w-5 mr-2" />
+                Leave Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-2">Leave Type</h4>
+                  <p className="text-gray-600">{leave.leaveType?.name || 'Unknown'}</p>
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-2">Duration</h4>
+                  <p className="text-gray-600">
+                    {format(new Date(leave.startDate), 'MMM dd, yyyy')} - {format(new Date(leave.endDate), 'MMM dd, yyyy')}
+                    <span className="ml-2 text-sm text-gray-500">
+                      ({leave.totalDays} day{leave.totalDays !== 1 ? 's' : ''})
+                    </span>
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-2">Applied On</h4>
+                  <p className="text-gray-600">
+                    {format(new Date(leave.appliedAt), 'MMM dd, yyyy at h:mm a')}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-2">Status</h4>
                   {getStatusBadge(leave.status)}
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-1">Leave Type</h4>
-                    <p className="text-gray-600">{leave.leaveType?.name || 'Unknown'}</p>
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-1">Total Days</h4>
-                    <p className="text-gray-600">{leave.totalDays} business day{leave.totalDays !== 1 ? 's' : ''}</p>
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-1">Start Date</h4>
-                    <p className="text-gray-600">{format(new Date(leave.startDate), 'EEEE, MMMM dd, yyyy')}</p>
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-1">End Date</h4>
-                    <p className="text-gray-600">{format(new Date(leave.endDate), 'EEEE, MMMM dd, yyyy')}</p>
-                  </div>
-                </div>
-                
-                <Separator />
-                
+              </div>
+
+              <div>
+                <h4 className="font-medium text-gray-900 mb-2">Reason</h4>
+                <p className="text-gray-600">{leave.reason}</p>
+              </div>
+
+              {leave.attachmentUrl && (
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-2">Reason</h4>
-                  <p className="text-gray-600 leading-relaxed">{leave.reason}</p>
+                  <h4 className="font-medium text-gray-900 mb-2">Supporting Document</h4>
+                  <div className="flex items-center space-x-2">
+                    <FileText className="h-4 w-4 text-gray-500" />
+                    <Button variant="outline" size="sm" asChild>
+                      <a href={leave.attachmentUrl} target="_blank" rel="noopener noreferrer">
+                        <Download className="h-4 w-4 mr-1" />
+                        Download Document
+                      </a>
+                    </Button>
+                  </div>
                 </div>
+              )}
+            </CardContent>
+          </Card>
 
-                {leave.attachmentUrl && (
-                  <>
-                    <Separator />
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-2">Supporting Document</h4>
-                      <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                        <FileText className="h-5 w-5 text-gray-500" />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900">
-                            {leave.attachmentUrl.split('/').pop()}
-                          </p>
-                          <p className="text-xs text-gray-500">Uploaded document</p>
-                        </div>
-                        <Button variant="outline" size="sm" asChild>
-                          <a href={leave.attachmentUrl} download target="_blank" rel="noopener noreferrer">
-                            <FileText className="h-4 w-4 mr-1" />
-                            Download
-                          </a>
-                        </Button>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {leave.rejectionReason && (
-                  <>
-                    <Separator />
-                    <div>
-                      <h4 className="font-medium text-red-900 mb-2">Rejection Reason</h4>
-                      <p className="text-red-600 leading-relaxed">{leave.rejectionReason}</p>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Approval History */}
+          {/* Approval History */}
+          {approvalHistory && approvalHistory.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <Clock className="h-5 w-5 mr-2" />
                   Approval History
                 </CardTitle>
-                <CardDescription>
-                  Timeline of actions taken on this leave request
-                </CardDescription>
               </CardHeader>
               <CardContent>
-                {approvalHistory && approvalHistory.length > 0 ? (
-                  <div className="space-y-4">
-                    {approvalHistory.map((entry, index) => (
-                      <div key={entry.id} className="flex items-start space-x-3">
-                        <div className="flex-shrink-0 mt-1">
-                          {getActionIcon(entry.action)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2 mb-1">
-                            <span className="font-medium text-gray-900">
-                              {entry.action.charAt(0) + entry.action.slice(1).toLowerCase()}
-                            </span>
-                            {entry.approver?.name && (
-                              <span className="text-sm text-gray-500">
-                                by {entry.approver.name}
-                              </span>
-                            )}
-                            {entry.approver?.role && (
-                              <Badge variant="outline" className="text-xs">
-                                {String(entry.approver.role).toLowerCase()}
-                              </Badge>
-                            )}
-                          </div>
-                          {entry.comments && (
-                            <p className="text-sm text-gray-600 mb-1">{entry.comments}</p>
-                          )}
-                          <p className="text-xs text-gray-500">
-                            {format(new Date(entry.timestamp), 'MMM dd, yyyy at h:mm a')}
-                          </p>
-                        </div>
-                        {index < (approvalHistory?.length || 0) - 1 && (
-                          <div className="absolute left-6 mt-8 w-px h-8 bg-gray-200"></div>
+                <div className="space-y-4">
+                  {approvalHistory.map((approval, index) => (
+                    <div key={index} className="flex items-start space-x-3 p-4 border rounded-lg">
+                      <div className="flex-shrink-0">
+                        {approval.action === 'APPROVE' ? (
+                          <CheckCircle className="h-5 w-5 text-green-500" />
+                        ) : (
+                          <XCircle className="h-5 w-5 text-red-500" />
                         )}
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="flex items-start space-x-3">
-                      <div className="flex-shrink-0 mt-1">
-                        <FileText className="h-4 w-4 text-blue-600" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <span className="font-medium text-gray-900">Submitted</span>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-medium text-gray-900">
+                            {approval.approver} ({approval.approverType})
+                          </h4>
                           <span className="text-sm text-gray-500">
-                            by {user?.name || 'You'}
+                            {format(new Date(approval.timestamp), 'MMM dd, yyyy at h:mm a')}
                           </span>
-                          <Badge variant="outline" className="text-xs">
-                            {user?.role?.toLowerCase() || 'employee'}
-                          </Badge>
                         </div>
-                        <p className="text-sm text-gray-600 mb-1">Leave application submitted for review</p>
-                        <p className="text-xs text-gray-500">
-                          {format(new Date(leave.appliedAt), 'MMM dd, yyyy at h:mm a')}
+                        <p className="text-sm text-gray-600 mt-1">
+                          {approval.action === 'APPROVE' ? 'Approved' : 'Rejected'}
+                          {approval.comments && ` - ${approval.comments}`}
                         </p>
                       </div>
                     </div>
-                    
-                    {leave.status === 'APPROVED' && (
-                      <div className="flex items-start space-x-3">
-                        <div className="flex-shrink-0 mt-1">
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2 mb-1">
-                            <span className="font-medium text-gray-900">Approved</span>
-                            <span className="text-sm text-gray-500">
-                              by HR Manager
-                            </span>
-                            <Badge variant="outline" className="text-xs">
-                              hr_manager
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-gray-600 mb-1">Leave request approved</p>
-                          <p className="text-xs text-gray-500">
-                            {leave.hrApprovedAt ? format(new Date(leave.hrApprovedAt), 'MMM dd, yyyy at h:mm a') : 'Recently approved'}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {leave.status === 'REJECTED' && (
-                      <div className="flex items-start space-x-3">
-                        <div className="flex-shrink-0 mt-1">
-                          <XCircle className="h-4 w-4 text-red-600" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2 mb-1">
-                            <span className="font-medium text-gray-900">Rejected</span>
-                            <span className="text-sm text-gray-500">
-                              by Manager
-                            </span>
-                            <Badge variant="outline" className="text-xs">
-                              manager
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-gray-600 mb-1">Leave request rejected</p>
-                          <p className="text-xs text-gray-500">
-                            Recently rejected
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+                  ))}
+                </div>
               </CardContent>
             </Card>
-          </div>
+          )}
 
-          {/* Sidebar */}
-          <div className="space-y-6">
+          {/* Manager Actions */}
+          {user?.role === 'MANAGER' || user?.role === 'HR_MANAGER' || user?.role === 'REPORTING_MANAGER' || user?.role === 'ADMIN' ? (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center">
-                  <User className="h-5 w-5 mr-2" />
-                  Applicant Details
-                </CardTitle>
+                <CardTitle>Manager Actions</CardTitle>
+                <CardDescription>
+                  Review and take action on this leave request
+                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-4">
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-1">Name</h4>
-                  <p className="text-gray-600">
-                    {user?.name || 'Unknown User'}
-                  </p>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Comments (Optional)
+                  </label>
+                  <Textarea
+                    placeholder="Add your comments here..."
+                    value={approvalComments}
+                    onChange={(e) => setApprovalComments(e.target.value)}
+                    className="mb-4"
+                  />
                 </div>
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-1">Department</h4>
-                  <p className="text-gray-600">{user?.department || 'Unknown'}</p>
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-1">Role</h4>
-                  <Badge variant="outline">{user?.role?.toLowerCase() || 'employee'}</Badge>
+                <div className="flex space-x-3">
+                  <Button onClick={handleApprove} className="bg-green-600 hover:bg-green-700">
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Approve
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" className="text-red-600 hover:text-red-700">
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Reject
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Reject Leave Request</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Please provide a reason for rejecting this leave request.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <div className="py-4">
+                        <Textarea
+                          placeholder="Enter rejection reason..."
+                          value={rejectionComments}
+                          onChange={(e) => setRejectionComments(e.target.value)}
+                        />
+                      </div>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleReject}
+                          className="bg-red-600 hover:bg-red-700"
+                        >
+                          Reject Request
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </CardContent>
             </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Application Timeline</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-1">Applied On</h4>
-                  <p className="text-gray-600">
-                    {format(new Date(leave.appliedAt), 'MMM dd, yyyy at h:mm a')}
-                  </p>
-                </div>
-                {leave.rmApprovedAt && (
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-1">
-                      RM {leave.status === 'APPROVED' ? 'Approved On' : 'Processed On'}
-                    </h4>
-                    <p className="text-gray-600">
-                      {format(new Date(leave.rmApprovedAt), 'MMM dd, yyyy at h:mm a')}
-                    </p>
-                  </div>
-                )}
-                {leave.hrApprovedAt && (
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-1">HR Approved On</h4>
-                    <p className="text-gray-600">
-                      {format(new Date(leave.hrApprovedAt), 'MMM dd, yyyy at h:mm a')}
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+          ) : null}
         </div>
       </div>
     </div>

@@ -121,11 +121,10 @@ export default function NewLeavePage() {
       
       // Create FormData for multipart/form-data
       const formData = new FormData();
-      formData.append('leaveTypeId', data.leaveTypeId);
+      formData.append('leaveType', data.leaveTypeId);
       formData.append('startDate', data.startDate);
       formData.append('endDate', data.endDate);
       formData.append('reason', data.reason);
-      formData.append('totalDays', totalDays.toString());
       
       if (selectedFile) {
         formData.append('file', selectedFile);

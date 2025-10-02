@@ -78,9 +78,17 @@ export async function seedEmployees(dataSource: DataSource) {
     console.log(`Created employee: ${savedEmployee.name} (${savedEmployee.employeeCode})`);
   }
 
-  // Now update Sarah Jones to have Jane Smith as her reporting manager
+  // Now update reporting manager relationships
+  const john = createdEmployees.find(emp => emp.employeeCode === 'EMP001');
   const sarah = createdEmployees.find(emp => emp.employeeCode === 'EMP004');
   const jane = createdEmployees.find(emp => emp.employeeCode === 'EMP002');
+  
+  // Both John and Sarah report to Jane Smith (REPORTING_MANAGER)
+  if (john && jane) {
+    john.reportingManagerId = jane.id;
+    await employeeRepository.save(john);
+    console.log(`Updated ${john.name} to report to ${jane.name}`);
+  }
   
   if (sarah && jane) {
     sarah.reportingManagerId = jane.id;

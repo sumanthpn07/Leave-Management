@@ -7,12 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { CircleCheck as CheckCircle, Circle as XCircle, Clock, User, Calendar, FileText, Paperclip, ArrowLeft } from 'lucide-react';
+import { CircleCheck as CheckCircle, Circle as XCircle, Clock, User, Calendar, FileText, Paperclip } from 'lucide-react';
 import { format } from 'date-fns';
 import { LeaveRequest } from '@/types/leave';
 import { ApprovalModal } from '@/components/approvals/approval-modal';
 import Link from 'next/link';
-import { BackButton } from '@/components/ui/back-button';
 
 export default function ApprovalsPage() {
   const [selectedLeave, setSelectedLeave] = useState<LeaveRequest | null>(null);
@@ -51,19 +50,19 @@ export default function ApprovalsPage() {
     }
   };
 
-  const handleCancel = () => {
-    setSelectedLeave(null);
-    setModalMode(null);
-  };
-
-  const getLeaveTypeColor = (type: string) => {
-    const colors = {
-      'Annual Leave': 'bg-blue-100 text-blue-800',
-      'Sick Leave': 'bg-red-100 text-red-800',
-      'Personal Leave': 'bg-purple-100 text-purple-800',
-      'Maternity/Paternity Leave': 'bg-green-100 text-green-800',
+  const getStatusBadge = (status: string) => {
+    const variants = {
+      PENDING_RM: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      PENDING_HR: 'bg-orange-100 text-orange-800 border-orange-200',
     };
-    return colors[type as keyof typeof colors] || 'bg-gray-100 text-gray-800';
+    
+    const statusText = status === 'PENDING_RM' ? 'Pending RM' : 'Pending HR';
+    
+    return (
+      <Badge className={variants[status as keyof typeof variants] || variants.PENDING_RM}>
+        {statusText}
+      </Badge>
+    );
   };
 
   if (error) {
@@ -94,28 +93,6 @@ export default function ApprovalsPage() {
             </p>
           </div>
 
-          {/* Stats Card */}
-          <Card className="mb-6">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-6">
-                <div className="flex items-center space-x-2">
-                  <Clock className="h-5 w-5 text-yellow-600" />
-                  <span className="text-sm font-medium text-gray-600">Pending Approvals</span>
-                  <Badge variant="outline" className="ml-2">
-                    {pendingApprovals?.length || 0}
-                  </Badge>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <User className="h-5 w-5 text-blue-600" />
-                  <span className="text-sm font-medium text-gray-600">Team Members</span>
-                  <Badge variant="outline" className="ml-2">
-                    {new Set(pendingApprovals?.map(leave => leave.userId)).size || 0}
-                  </Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           {isLoading ? (
             <div className="space-y-4">
               {[...Array(3)].map((_, i) => (
@@ -131,47 +108,36 @@ export default function ApprovalsPage() {
               ))}
             </div>
           ) : pendingApprovals && pendingApprovals.length > 0 ? (
-            <div className="space-y-4">
+            <div className="space-y-6">
               {pendingApprovals.map((leave) => (
                 <Card key={leave.id} className="hover:shadow-md transition-shadow">
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-3">
+                        <div className="flex items-center space-x-3 mb-4">
                           <div>
                             <h3 className="text-lg font-semibold text-gray-900">
-                              {leave.user?.name || 'Unknown User'}
+                              {leave.leaveType?.name || 'Unknown Leave Type'}
                             </h3>
                             <p className="text-sm text-gray-600">
-                              {leave.user?.department || 'Unknown Department'}
+                              {format(new Date(leave.startDate), 'MMM dd, yyyy')} - {format(new Date(leave.endDate), 'MMM dd, yyyy')}
                             </p>
                           </div>
-                          <Badge className={getLeaveTypeColor(leave.leaveType?.name || 'Unknown')}>
-                            {leave.leaveType?.name || 'Unknown'}
-                          </Badge>
+                          {getStatusBadge(leave.status)}
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                           <div className="flex items-center space-x-2">
-                            <Calendar className="h-4 w-4 text-gray-500" />
+                            <User className="h-4 w-4 text-gray-500" />
                             <div>
-                              <p className="text-sm font-medium text-gray-900">Start Date</p>
+                              <p className="text-sm font-medium text-gray-900">Employee</p>
                               <p className="text-sm text-gray-600">
-                                {format(new Date(leave.startDate), 'MMM dd, yyyy')}
+                                {leave.user?.name || 'Unknown User'}
                               </p>
                             </div>
                           </div>
                           <div className="flex items-center space-x-2">
                             <Calendar className="h-4 w-4 text-gray-500" />
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">End Date</p>
-                              <p className="text-sm text-gray-600">
-                                {format(new Date(leave.endDate), 'MMM dd, yyyy')}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Clock className="h-4 w-4 text-gray-500" />
                             <div>
                               <p className="text-sm font-medium text-gray-900">Duration</p>
                               <p className="text-sm text-gray-600">
@@ -179,59 +145,57 @@ export default function ApprovalsPage() {
                               </p>
                             </div>
                           </div>
+                          <div className="flex items-center space-x-2">
+                            <Clock className="h-4 w-4 text-gray-500" />
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">Applied On</p>
+                              <p className="text-sm text-gray-600">
+                                {format(new Date(leave.appliedAt), 'MMM dd, yyyy')}
+                              </p>
+                            </div>
+                          </div>
                         </div>
 
                         <div className="mb-4">
-                          <p className="text-sm font-medium text-gray-900 mb-1">Reason</p>
-                          <p className="text-sm text-gray-600 leading-relaxed">
-                            {leave.reason}
-                          </p>
+                          <h4 className="font-medium text-gray-900 mb-1">Reason</h4>
+                          <p className="text-sm text-gray-600">{leave.reason}</p>
                         </div>
 
                         {leave.attachmentUrl && (
-                          <div className="flex items-center space-x-2 mb-4">
-                            <Paperclip className="h-4 w-4 text-gray-500" />
-                            <span className="text-sm text-gray-600">Supporting document attached</span>
-                            <Button variant="outline" size="sm" asChild>
-                              <a href={leave.attachmentUrl} download target="_blank" rel="noopener noreferrer">
-                                <FileText className="h-4 w-4 mr-1" />
-                                Download
-                              </a>
-                            </Button>
+                          <div className="mb-4">
+                            <h4 className="font-medium text-gray-900 mb-1">Supporting Document</h4>
+                            <div className="flex items-center space-x-2">
+                              <Paperclip className="h-4 w-4 text-gray-500" />
+                              <Button variant="outline" size="sm" asChild>
+                                <a href={leave.attachmentUrl} target="_blank" rel="noopener noreferrer">
+                                  <FileText className="h-4 w-4 mr-1" />
+                                  View Document
+                                </a>
+                              </Button>
+                            </div>
                           </div>
                         )}
-
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-4">
-                            <Badge variant="outline" className="text-xs">
-                              Applied {format(new Date(leave.appliedAt), 'MMM dd, yyyy')}
-                            </Badge>
-                            <Button variant="ghost" size="sm" asChild>
-                              <Link href={`/leaves/${leave.id}`}>
-                                <FileText className="h-4 w-4 mr-1" />
-                                View Details
-                              </Link>
-                            </Button>
-                          </div>
-                        </div>
                       </div>
 
-                      <div className="flex flex-col space-y-2 ml-4">
+                      <div className="flex items-center space-x-2 ml-4">
                         <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => handleApprove(leave)}
-                          className="bg-green-600 hover:bg-green-700 text-white"
+                          className="text-green-600 hover:text-green-700"
                           disabled={approveLeaveMutation.isPending}
                         >
-                          <CheckCircle className="h-4 w-4 mr-2" />
+                          <CheckCircle className="h-4 w-4 mr-1" />
                           Approve
                         </Button>
                         <Button
-                          onClick={() => handleReject(leave)}
                           variant="outline"
-                          className="text-red-600 border-red-300 hover:bg-red-50"
+                          size="sm"
+                          onClick={() => handleReject(leave)}
+                          className="text-red-600 hover:text-red-700"
                           disabled={approveLeaveMutation.isPending}
                         >
-                          <XCircle className="h-4 w-4 mr-2" />
+                          <XCircle className="h-4 w-4 mr-1" />
                           Reject
                         </Button>
                       </div>
@@ -246,7 +210,7 @@ export default function ApprovalsPage() {
                 <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No Pending Approvals</h3>
                 <p className="text-gray-600 mb-6">
-                  There are no leave requests waiting for your approval at the moment.
+                  There are no pending leave requests that require your approval.
                 </p>
                 <Button asChild>
                   <Link href="/dashboard">
@@ -256,19 +220,22 @@ export default function ApprovalsPage() {
               </CardContent>
             </Card>
           )}
-
-          {/* Approval Modal */}
-          {selectedLeave && modalMode && (
-            <ApprovalModal
-              leave={selectedLeave}
-              mode={modalMode}
-              onConfirm={handleConfirm}
-              onCancel={handleCancel}
-              isLoading={approveLeaveMutation.isPending}
-            />
-          )}
         </div>
       </div>
+
+      {/* Approval Modal */}
+      {selectedLeave && modalMode && (
+        <ApprovalModal
+          leave={selectedLeave}
+          mode={modalMode}
+          onConfirm={handleConfirm}
+          onClose={() => {
+            setSelectedLeave(null);
+            setModalMode(null);
+          }}
+          isLoading={approveLeaveMutation.isPending}
+        />
+      )}
     </ProtectedRoute>
   );
 }

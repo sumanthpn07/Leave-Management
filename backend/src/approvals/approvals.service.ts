@@ -33,21 +33,26 @@ export class ApprovalsService {
   }
 
   async getPending(user: Employee) {
-    if (![UserRole.REPORTING_MANAGER, UserRole.HR_MANAGER].includes(user.role)) {
+    if (![UserRole.REPORTING_MANAGER, UserRole.HR_MANAGER, UserRole.ADMIN].includes(user.role)) {
       throw new ForbiddenException('Not an approver');
     }
 
-    const qb = this.leaveRepo.createQueryBuilder('lr')
-      .leftJoin('lr.workflow', 'wf')
+    let query = this.leaveRepo.createQueryBuilder('lr')
+      .leftJoinAndSelect('lr.employee', 'emp')
+      .leftJoinAndSelect('lr.workflow', 'wf')
       .where('lr.status IN (:...statuses)', { statuses: [LeaveStatus.PENDING_RM, LeaveStatus.PENDING_HR] });
 
     if (user.role === UserRole.REPORTING_MANAGER) {
-      qb.andWhere('(wf.currentStage = :stage AND EXISTS (SELECT 1 FROM employees e WHERE e.id = lr.employeeId AND e.reportingManagerId = :rmId))', { stage: 'PENDING_RM', rmId: user.id });
+      // Get leaves from employees who report to this manager
+      query = query.andWhere('emp.reportingManagerId = :managerId', { managerId: user.id })
+                   .andWhere('wf.currentStage = :stage', { stage: 'PENDING_RM' });
     } else if (user.role === UserRole.HR_MANAGER) {
-      qb.andWhere('wf.currentStage = :stage', { stage: 'PENDING_HR' });
+      // Get leaves that are pending HR approval
+      query = query.andWhere('wf.currentStage = :stage', { stage: 'PENDING_HR' });
     }
+    // ADMIN can see all pending approvals
 
-    const pending = await qb.orderBy('lr.appliedAt', 'DESC').getMany();
+    const pending = await query.orderBy('lr.appliedAt', 'DESC').getMany();
     return { success: true, data: pending };
   }
 
